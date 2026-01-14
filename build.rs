@@ -3,11 +3,11 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rustc-link-search=/opt/sentech/lib");
-    println!("cargo:rustc-link-lib=VmbC");
+    println!("cargo:rustc-link-lib=StApi");
     unsafe {
         std::env::set_var(
             "BINDGEN_EXTRA_CLANG_ARGS",
-            "-I\"/opt/VimbaX_2025-3/api/include\"",
+            "-I/opt/sentech/include/StApi -I/opt/sentech/include/GenICam",
         );
     };
 
@@ -21,7 +21,7 @@ fn main() {
         // Finish the builder and generate the bindings.
         .generate()
         // Unwrap the Result and panic on failure.
-        .expect("Unable to generate bindings");
+        .expect("Unable to generate StApi bindings");
 
     // Write the bindings to the $OUT_DIR/bindings.rs file.
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
