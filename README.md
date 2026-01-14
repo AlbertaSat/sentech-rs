@@ -1,2 +1,1 @@
-# sentech-rs
-Safe rust bindings for Sentech StApi SDK
+## sentech wrapper

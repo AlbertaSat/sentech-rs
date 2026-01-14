@@ -1,0 +1,12 @@
+[package]
+name = "vimba-rs"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+thiserror = "2.0.17"
+strum = { version = "0.27.2", features = ["derive"] }
+
+[build-dependencies]
+bindgen = "0.72.1"
