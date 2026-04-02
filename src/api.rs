@@ -28,3 +28,56 @@ impl TransportLayerHandle {
         self.ptr
     }
 }
+
+#[repr(transparent)]
+#[derive(Debug, Clone)]
+pub struct InterfaceHandle {
+    ptr: StApiHandle_t,
+}
+
+impl InterfaceHandle {
+    pub unsafe fn from_raw(ptr: StApiHandle_t) -> Self {
+        Self { ptr }
+    }
+    pub fn as_raw(&self) -> StApiHandle_t {
+        self.ptr
+    }
+}
+
+
+#[repr(transparent)]
+#[derive(Debug, Clone)]
+pub struct DeviceHandle {
+    handle: StApiHandle_t,
+}
+
+impl StreamHandles {
+    pub unsafe fn from_raw(ptr: *const StApiHandle_t) -> Self {
+        Self { ptr }
+    }
+    pub fn as_raw(&self) -> *const StApiHandle_t {
+        self.ptr
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone)]
+pub struct CameraHandle {
+    ptr: StApiHandle_t,
+}
+
+impl CameraHandle {
+    pub unsafe fn from_raw(ptr: StApiHandle_t) -> Self {
+        Self { ptr }
+    }
+    pub fn as_raw(&self) -> StApiHandle_t {
+        self.ptr
+    }
+}
+
+pub type StFrameCallback = Option<
+    extern "C" fn(
+        handle: StApiHandle_t,
+        frame: *mut StFrame,
+    )
+>;
