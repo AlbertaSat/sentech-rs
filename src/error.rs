@@ -28,34 +28,39 @@ The relevant error codes were listed in the terminal output:
 
 */
 
-#[repr(i32)]
+/*Hasnain Notes
+changed i32 to u32 to match the type of _EStApiCError_t in the generated bindings
+changed Gen to GenTL 
+*/
+
+#[repr(u32)]
 #[derive(Debug, Copy, Clone, Error, FromRepr)]
 pub enum StApiError{
 
     #[error("Error")]
-    Error = _EStApiCError_t_StApiCError_Error
+    Error = _EStApiCError_t_StApiCError_Error,
     #[error("BadAllocation")]
-    BadAlloc = _EStApiCError_t_StApiCError_BadAlloc
+    BadAlloc = _EStApiCError_t_StApiCError_BadAlloc,
     #[error("InvalidArgument")]
-    InvalidArgument = _EStApiCError_t_StApiCError_InvalidArgument
+    InvalidArgument = _EStApiCError_t_StApiCError_InvalidArgument,
     #[error("OutOfRange")]
-    OutOfRange = _EStApiCError_t_StApiCError_OutOfRange
+    OutOfRange = _EStApiCError_t_StApiCError_OutOfRange,
     #[error("PropertyError")]
-    Property = _EStApiCError_t_StApiCError_Property
+    Property = _EStApiCError_t_StApiCError_Property,
     #[error("RuntimeError")]
-    Runtime = _EStApiCError_t_StApiCError_Runtime
+    Runtime = _EStApiCError_t_StApiCError_Runtime,
     #[error("LogicalError")]
-    LogicalError = _EStApiCError_t_StApiCError_LogicalError
+    LogicalError = _EStApiCError_t_StApiCError_LogicalError,
     #[error("AccessError")]
-    AccessError = _EStApiCError_t_StApiCError_AccessError
+    AccessError = _EStApiCError_t_StApiCError_AccessError,
     #[error("TimeoutError")]
-    Timeout = _EStApiCError_t_StApiCError_Timeout
+    Timeout = _EStApiCError_t_StApiCError_Timeout,
     #[error("DynamicCastError")]
-    DynamicCast = _EStApiCError_t_StApiCError_DynamicCast
+    DynamicCast = _EStApiCError_t_StApiCError_DynamicCast,
     #[error("GenTLError")]
-    GenTLError = _EStApiCError_t_StApiCError_Gen
+    GenTLError = _EStApiCError_t_StApiCError_GenTLError,
     #[error("LinuxError")]
-    LinuxError = _EStApiCError_t_StApiCError_LinuxError
+    LinuxError = _EStApiCError_t_StApiCError_LinuxError,
 
 }
 
