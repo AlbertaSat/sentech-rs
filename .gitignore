@@ -1,2 +1,8 @@
 target/*
 Cargo.lock
+
+sentech-rs/examples/sentech_ffi_example.rs
+examples/sentech_api_wrapper_example.rs
+.gitignore
+.gitignore
+examples/sentech_ffi_example.rs
