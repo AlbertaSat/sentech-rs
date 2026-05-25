@@ -61,7 +61,7 @@ fn main() {
         }
     };
 
-    let dev = match interface.create_first_ist_device(access) {
+    let dev = match system.create_first_ist_device(access) {
         Ok(dev) => dev,
         Err(e) => {
             eprintln!("Failed to create first device: {:?}", e);

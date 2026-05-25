@@ -41,6 +41,7 @@ impl SentechApi {
         })
     }
 
+    // need to create system handle first to access the system-level functions like updating interface list, getting interface count, etc.
     pub fn create_system(&self) -> Result<SystemHandle, _EStApiCError_t> {
 
         let mut handle: StApiHandle_t = unsafe { mem::zeroed() };
@@ -103,11 +104,47 @@ pub struct SystemHandle {
     api_table: *mut StApi_Functions_t,
 }
 
-/**
-pub type PStApiTL_IStSystem_UpdateInterfaceList_t = ::std::option::Option<
-    unsafe extern "C" fn(pIStSystemHandle: PStApiHandle_t, pbReval: *mut bool8_t) -> EStApiCError_t,
-*/
+pub struct SystemInfoHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
 impl SystemHandle {
+
+        pub fn get_ist_port(&self) -> Result<PortHandle, _EStApiCError_t> {
+        let mut port_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_port = unsafe { (*(*self.api_table).IStSystem).GetIStPort.unwrap() };
+
+        let err = unsafe { get_port(ptr::addr_of!(self.ptr) as *mut _, &mut port_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(PortHandle {
+            ptr: port_ptr,
+            api_table: self.api_table,
+        })
+    }
+
+    pub fn get_ist_system_info(&self) -> Result<SystemInfoHandle, _EStApiCError_t> {
+        let mut sys_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_sys_info = unsafe { (*(*self.api_table).IStSystem).GetIStSystemInfo.unwrap() };
+
+        let err = unsafe { get_sys_info(ptr::addr_of!(self.ptr) as *mut _, &mut sys_info_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(SystemInfoHandle {
+            ptr: sys_info_ptr,
+            api_table: self.api_table,
+        })
+    }
+
     pub fn update_interface_list(&self) -> Result<bool, _EStApiCError_t> {
         let update_iface_list = unsafe { (*(*self.api_table).IStSystem).UpdateInterfaceList.unwrap() };
 
@@ -147,6 +184,29 @@ impl SystemHandle {
         }
 
         Ok(InterfaceHandle { ptr: iface_ptr, api_table: self.api_table })
+    }
+
+    pub fn create_first_ist_device(&self, access_flag: DeviceAccess) -> Result<DeviceHandle, _EStApiCError_t> {
+        let mut device_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let create_device = unsafe { (*(*self.api_table).IStSystem).CreateFirstIStDevice.unwrap() };
+
+        let err = unsafe {
+            create_device(
+                ptr::addr_of!(self.ptr) as *mut _,
+                access_flag as u32,
+                &mut device_ptr,
+            )
+        };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(DeviceHandle {
+            ptr: device_ptr,
+            api_table: self.api_table,
+        })
     }
 }
 
@@ -226,23 +286,6 @@ impl InterfaceHandle {
         }
 
         Ok(SystemHandle { ptr: system_ptr, api_table: self.api_table })
-    }
-
-    pub fn get_ist_port(&self) -> Result<PortHandle, _EStApiCError_t> {
-        let mut port_ptr: StApiHandle_t = unsafe { mem::zeroed() };
-
-        let get_port = unsafe { (*(*self.api_table).IStInterface).GetIStPort.unwrap() };
-
-        let err = unsafe { get_port(ptr::addr_of!(self.ptr) as *mut _, &mut port_ptr) };
-
-        if err != _EStApiCError_t_StApiCError_NoError {
-            return Err(err);
-        }
-
-        Ok(PortHandle {
-            ptr: port_ptr,
-            api_table: self.api_table,
-        })
     }
 
     pub fn get_interface_info(&self) -> Result<InterfaceInfoHandle, _EStApiCError_t> {
@@ -325,29 +368,6 @@ impl InterfaceHandle {
         }
 
         Ok(available != 0)
-    }
-
-    pub fn create_first_ist_device(&self, access_flag: DeviceAccess) -> Result<DeviceHandle, _EStApiCError_t> {
-        let mut device_ptr: StApiHandle_t = unsafe { mem::zeroed() };
-
-        let create_device = unsafe { (*(*self.api_table).IStInterface).CreateFirstIStDevice.unwrap() };
-
-        let err = unsafe {
-            create_device(
-                ptr::addr_of!(self.ptr) as *mut _,
-                access_flag as u32,
-                &mut device_ptr,
-            )
-        };
-
-        if err != _EStApiCError_t_StApiCError_NoError {
-            return Err(err);
-        }
-
-        Ok(DeviceHandle {
-            ptr: device_ptr,
-            api_table: self.api_table,
-        })
     }
 
 }
