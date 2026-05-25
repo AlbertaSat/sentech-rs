@@ -173,6 +173,17 @@ pub enum InterfaceType {
     All,
 }
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum DeviceAccess {
+    Unknown = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_UNKNOWN,
+    None = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_NONE,
+    ReadOnly = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_READONLY,
+    Control = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_CONTROL,
+    Exclusive = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_EXCLUSIVE,
+    CustomId = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_CUSTOM_ID,
+}
+
 pub struct InterfaceHandle { 
     ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
@@ -252,7 +263,7 @@ impl InterfaceHandle {
     }
  
     pub fn update_device_list(&self) -> Result<bool, _EStApiCError_t> {
-        let update_dev_list = unsafe { (*(*self.api_table).IStSystem).UpdateDeviceList.unwrap() };
+        let update_dev_list = unsafe { (*(*self.api_table).IStInterface).UpdateDeviceList.unwrap() };
 
         let mut updated: bool8_t = 0;
         let err = unsafe { update_dev_list(ptr::addr_of!(self.ptr) as *mut _, &mut updated) };
@@ -291,6 +302,50 @@ impl InterfaceHandle {
 
         Ok(DeviceInfoHandle {
             ptr: dev_info_ptr,
+            api_table: self.api_table,
+        })
+    }
+
+    pub fn device_available(&self, index: usize, access_flag: DeviceAccess) -> Result<bool, _EStApiCError_t> {
+        let mut available: bool8_t = 0;
+
+        let get_dev_available = unsafe { (*(*self.api_table).IStInterface).IsDeviceAvailable.unwrap() };
+
+        let err = unsafe {
+            get_dev_available(
+                ptr::addr_of!(self.ptr) as *mut _,
+                index,
+                access_flag as u32,
+                &mut available,
+            )
+        };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(available != 0)
+    }
+
+    pub fn create_first_ist_device(&self, access_flag: DeviceAccess) -> Result<DeviceHandle, _EStApiCError_t> {
+        let mut device_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let create_device = unsafe { (*(*self.api_table).IStInterface).CreateFirstIStDevice.unwrap() };
+
+        let err = unsafe {
+            create_device(
+                ptr::addr_of!(self.ptr) as *mut _,
+                access_flag as u32,
+                &mut device_ptr,
+            )
+        };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(DeviceHandle {
+            ptr: device_ptr,
             api_table: self.api_table,
         })
     }
