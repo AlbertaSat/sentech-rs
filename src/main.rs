@@ -1,4 +1,9 @@
-use sentech_rs::api::{DeviceAccess, InterfaceHandle, SentechApi, SystemHandle};
+use sentech_rs::api::{
+    DeviceAccess, 
+    InterfaceHandle, 
+    SentechApi, 
+    SystemHandle
+};
 
 
 // ============================================================================

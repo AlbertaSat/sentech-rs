@@ -234,7 +234,7 @@ pub enum InterfaceType {
 }
 
 #[repr(u32)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, FromRepr)]
 pub enum DeviceAccess {
     Unknown = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_UNKNOWN,
     None = DEVICE_ACCESS_FLAGS_DEVICE_ACCESS_NONE,
@@ -250,16 +250,6 @@ pub struct InterfaceHandle {
 }
 
 pub struct InterfaceInfoHandle {
-    ptr: StApiHandle_t,
-    api_table: *mut StApi_Functions_t,
-}
-
-pub struct PortHandle {
-    ptr: StApiHandle_t,
-    api_table: *mut StApi_Functions_t,
-}
-
-pub struct DeviceInfoHandle {
     ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
 }
@@ -379,12 +369,30 @@ impl Drop for InterfaceHandle {
 }
 
 impl InterfaceInfoHandle {
-    pub fn get_id(&self) -> Result<String, _EStApiCError_t> {
-        todo!("implement: GetID")
+    pub fn get_interface_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_iface_id = unsafe { (*(*self.api_table).IStInterfaceInfo).GetIDA.unwrap() };
+        let err = unsafe { get_iface_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
     }
  
-    pub fn get_name(&self) -> Result<String, _EStApiCError_t> {
-        todo!("implement: GetName")
+    pub fn get_interface_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_iface_name = unsafe { (*(*self.api_table).IStInterfaceInfo).GetDisplayNameA.unwrap() };
+        let err = unsafe { get_iface_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
     }
  
     pub fn get_interface_type(&self) -> Result<InterfaceType, _EStApiCError_t> {
@@ -398,17 +406,96 @@ impl Drop for InterfaceInfoHandle {
     }
 }
 
+
+// ============================================================================
+// Port Handle (IStPort & IStPortInfo)
+// ============================================================================
+
+pub struct PortHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+
+pub struct PortInfoHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+pub struct INodeMapHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut GenApi_Functions_t,
+}
+
 impl PortHandle {
-    pub fn get_ist_port_info(&self) -> Result<String, _EStApiCError_t> {
-        todo!("implement: GetPortID")
+    pub fn get_ist_port_info(&self) -> Result<PortInfoHandle, _EStApiCError_t> {
+        let mut port_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_port_info = unsafe { (*(*self.api_table).IStPort).GetIStPortInfo.unwrap() };
+        let err = unsafe { get_port_info(ptr::addr_of!(self.ptr) as *mut _, &mut port_info_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(PortInfoHandle {
+            ptr: port_info_ptr,
+            api_table: self.api_table,
+        })
     }
 
-    pub fn get_inode_map(&self) -> Result<String, _EStApiCError_t> {
-        todo!("implement: GetINodeMap")
+    pub fn get_inode_map(&self, genapi_table: *mut GenApi_Functions_t) -> Result<INodeMapHandle, _EStApiCError_t> {
+        let mut inode_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_inode_map = unsafe { (*(*self.api_table).IStPort).GetINodeMap.unwrap() };
+        let err = unsafe { get_inode_map(ptr::addr_of!(self.ptr) as *mut _, &mut inode_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(INodeMapHandle {
+            ptr: inode_ptr,
+            api_table: genapi_table,
+        })
     }
 }
 
 impl Drop for PortHandle {
+    fn drop(&mut self) {
+        // No explicit release function for ports in the API
+    }
+}
+
+impl PortInfoHandle {
+    pub fn get_port_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_port_id = unsafe { (*(*self.api_table).IStPortInfo).GetIDA.unwrap() };
+        let err = unsafe { get_port_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+    
+
+    pub fn get_port_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_port_name = unsafe { (*(*self.api_table).IStPortInfo).GetPortNameA.unwrap() };
+        let err = unsafe { get_port_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+}
+
+impl Drop for PortInfoHandle {
     fn drop(&mut self) {
         // No explicit release function for ports in the API
     }
@@ -423,17 +510,128 @@ pub struct DeviceHandle {
     api_table: *mut StApi_Functions_t,
 }
 
+pub struct DeviceInfoHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+pub struct DeviceInfo {
+    pub id: String,
+    pub display_name: String,
+    pub access_status: DeviceAccess,
+    pub version: String,
+}
+
 impl DeviceHandle {
-    pub fn create_data_stream(&self) -> Result<DataStreamHandle, _EStApiCError_t> {
-        todo!("implement: CreateIStDataStream")
+
+    pub fn get_local_port(&self) -> Result<PortHandle, _EStApiCError_t> {
+        let mut port_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_port = unsafe { (*(*self.api_table).IStDevice).GetLocalIStPort.unwrap() };
+
+        let err = unsafe { get_port(ptr::addr_of!(self.ptr) as *mut _, &mut port_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(PortHandle {
+            ptr: port_ptr,
+            api_table: self.api_table,
+        })
     }
- 
+
+    pub fn get_remote_port(&self) -> Result<PortHandle, _EStApiCError_t> {
+        let mut port_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_port = unsafe { (*(*self.api_table).IStDevice).GetRemoteIStPort.unwrap() };
+
+        let err = unsafe { get_port(ptr::addr_of!(self.ptr) as *mut _, &mut port_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(PortHandle {
+            ptr: port_ptr,
+            api_table: self.api_table,
+        })
+    }
+
+    pub fn get_device_info(&self) -> Result<DeviceInfoHandle, _EStApiCError_t> {
+        let mut dev_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_dev_info = unsafe { (*(*self.api_table).IStDevice).GetIStDeviceInfo.unwrap() };
+
+        let err = unsafe { get_dev_info(ptr::addr_of!(self.ptr) as *mut _, &mut dev_info_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(DeviceInfoHandle {
+            ptr: dev_info_ptr,
+            api_table: self.api_table,
+        })
+    }
+
+    pub fn get_datastream_count(&self) -> Result<u32, _EStApiCError_t> {
+        let mut count: u32 = 0;
+
+        let get_ds_count = unsafe { (*(*self.api_table).IStDevice).GetDataStreamCount.unwrap() };
+
+        let err = unsafe { get_ds_count(ptr::addr_of!(self.ptr) as *mut _, &mut count) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(count)
+    }
+    pub fn create_datastream(&self, index: usize) -> Result<DataStreamHandle, _EStApiCError_t> {
+        let mut datastream_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let create_ds = unsafe { (*(*self.api_table).IStDevice).CreateIStDataStream.unwrap() };
+
+        let err = unsafe {create_ds(ptr::addr_of!(self.ptr) as *mut _,index,ptr::null_mut(),&mut datastream_ptr)
+        };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(DataStreamHandle { 
+            ptr: datastream_ptr,
+            api_table: self.api_table 
+        })
+    }
+    
+    //IStDataStream.StartAcquisition() must be called beforehand to enable data acquisition in the host side. To stop acquisition, AcquisitionStop() must be called.
     pub fn acquisition_start(&self) -> Result<(), _EStApiCError_t> {
-        todo!("implement: AcquisitionStart")
+        let acq_start = unsafe { (*(*self.api_table).IStDevice).AcquisitionStart.unwrap() };
+        let err = unsafe { acq_start(ptr::addr_of!(self.ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
     }
- 
+
+    //IStDataStream.StopAcquisition() must be called to stop the data acquisition in the host side.
     pub fn acquisition_stop(&self) -> Result<(), _EStApiCError_t> {
-        todo!("implement: AcquisitionStop")
+        let acq_stop = unsafe { (*(*self.api_table).IStDevice).AcquisitionStop.unwrap() };
+        let err = unsafe { acq_stop(ptr::addr_of!(self.ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn device_lost(&self) -> Result<bool, _EStApiCError_t> {
+        let mut is_lost: bool8_t = 0;
+        let check_lost = unsafe { (*(*self.api_table).IStDevice).IsDeviceLost.unwrap() };
+        let err = unsafe { check_lost(ptr::addr_of!(self.ptr) as *mut _, &mut is_lost) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        //returns true if the device is lost, false otherwise
+        Ok(is_lost != 0)
     }
 }
 
@@ -447,6 +645,64 @@ impl Drop for DeviceHandle {
     }
 }
 
+impl DeviceInfoHandle {
+    pub fn get_dev_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_dev_id = unsafe { (*(*self.api_table).IStDeviceInfo).GetIDA.unwrap() };
+        let err = unsafe { get_dev_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_dev_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_dev_name = unsafe { (*(*self.api_table).IStDeviceInfo).GetDisplayNameA.unwrap() };
+        let err = unsafe { get_dev_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_dev_status(&self) -> Result<DeviceAccess, _EStApiCError_t> {
+        let mut access_status: u32 = 0;
+        let get_dev_status = unsafe { (*(*self.api_table).IStDeviceInfo).GetAccessStatus.unwrap() };
+        let err = unsafe { get_dev_status(ptr::addr_of!(self.ptr) as *mut _, &mut access_status) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        // Convert the returned access status to the DeviceAccess enum
+        DeviceAccess::from_repr(access_status)
+            .ok_or(_EStApiCError_t_StApiCError_OutOfRange)
+    }
+
+    pub fn get_dev_version(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_dev_version = unsafe { (*(*self.api_table).IStDeviceInfo).GetVersionA.unwrap() };
+        let err = unsafe { get_dev_version(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+}
+
+impl Drop for DeviceInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for device info in the API
+    }
+}
 
 // ============================================================================
 // Data Stream Handle (IStDataStream & IStDataStreamInfo)
@@ -457,14 +713,80 @@ pub struct DataStreamHandle {
     api_table: *mut StApi_Functions_t,
 }
 
+pub struct DataStreamInfoHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum DSStartFlag {
+    DEFAULT = ACQ_START_FLAGS_ACQ_START_FLAGS_DEFAULT,
+    CUSTOM_ID = ACQ_START_FLAGS_ACQ_START_FLAGS_CUSTOM_ID,
+
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum DSStopFlag {
+    DEFAULT = ACQ_STOP_FLAGS_ACQ_STOP_FLAGS_DEFAULT,
+    KILL = ACQ_STOP_FLAGS_ACQ_STOP_FLAGS_KILL,
+    CUSTOM_ID = ACQ_STOP_FLAGS_ACQ_STOP_FLAGS_CUSTOM_ID,
+}
+
+
+
 impl DataStreamHandle {
-    pub fn start_acquisition(&self) -> Result<(), _EStApiCError_t> {
-        todo!("implement: StartAcquisition")
+
+    pub fn get_datastream_info(&self) -> Result<DataStreamInfoHandle, _EStApiCError_t> {
+        let mut ds_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+
+        let get_ds_info = unsafe { (*(*self.api_table).IStDataStream).GetIStDataStreamInfo.unwrap() };
+
+        let err = unsafe { get_ds_info(ptr::addr_of!(self.ptr) as *mut _, &mut ds_info_ptr) };
+
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(DataStreamInfoHandle {
+            ptr: ds_info_ptr,
+            api_table: self.api_table,
+        })
     }
- 
-    pub fn stop_acquisition(&self) -> Result<(), _EStApiCError_t> {
-        todo!("implement: StopAcquisition")
+    //IStDevice::AcquisitionStart() call is required for the device to send the data out. To stop data acquisition, call StopAcquisition().
+    pub fn start_acquisition(&self, numAcquisitions: u64, acqStartFlag: u32) -> Result<(), _EStApiCError_t> {
+        let start_acq = unsafe { (*(*self.api_table).IStDataStream).StartAcquisition.unwrap() };
+        let err = unsafe { start_acq(ptr::addr_of!(self.ptr) as *mut _, numAcquisitions, acqStartFlag) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
     }
+    
+    //IStDevice::AcquisitionStop() call is required for the device to stop sending the data out.
+    pub fn stop_acquisition(&self, acqStopFlag: u32) -> Result<(), _EStApiCError_t> {
+        let stop_acq = unsafe { (*(*self.api_table).IStDataStream).StopAcquisition.unwrap() };
+        let err = unsafe { stop_acq(ptr::addr_of!(self.ptr) as *mut _, acqStopFlag) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    //Note that even if IStDataStreamInfo::IsGrabbing() is false, if IStDataStreamInfo::GetNumAwaitDelivery() is larger than 0 this will still return true.
+    pub fn is_grabbing(&self) -> Result<bool, _EStApiCError_t> {
+        let mut grabbing: bool8_t = 0;
+        let check_grabbing = unsafe { (*(*self.api_table).IStDataStream).IsGrabbing.unwrap() };
+        let err = unsafe { check_grabbing(ptr::addr_of!(self.ptr) as *mut _, &mut grabbing) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        //Return true if data acquisition from the device(camera) is on going.
+        Ok(grabbing != 0)
+    }
+
 }
 
 impl Drop for DataStreamHandle {
@@ -474,5 +796,36 @@ impl Drop for DataStreamHandle {
                 release(&mut self.ptr);
             }
         }
+    }
+}
+
+impl DataStreamInfoHandle {
+    pub fn get_datastream_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_ds_id = unsafe { (*(*self.api_table).IStDataStreamInfo).GetIDA.unwrap() };
+        let err = unsafe { get_ds_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_payload_size(&self) -> Result<usize, _EStApiCError_t> {
+        let mut payload_size: usize = 0;
+        let get_payload_size = unsafe { (*(*self.api_table).IStDataStreamInfo).GetPayloadSize.unwrap() };
+        let err = unsafe { get_payload_size(ptr::addr_of!(self.ptr) as *mut _, &mut payload_size) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(payload_size)
+    }
+}
+
+impl Drop for DataStreamInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for data stream info in the API
     }
 }
