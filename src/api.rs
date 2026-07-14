@@ -3507,7 +3507,7 @@ impl Drop for FilerHandle {
     fn drop(&mut self) {
         unsafe {
             if let Some(release) = (*(*self.api_table).IStFiler).Release {
-                release(&mut self.filer_ptr);
+                release(&mut self.ptr);
             }
         }
     }
