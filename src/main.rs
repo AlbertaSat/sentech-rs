@@ -1,8 +1,5 @@
 use sentech_rs::api::{
-    DeviceAccess, 
-    InterfaceHandle, 
-    SentechApi, 
-    SystemHandle
+    DeviceAccess, InterfaceHandle, SentechApi, SystemHandle,
 };
 
 
@@ -11,15 +8,15 @@ use sentech_rs::api::{
 // ============================================================================
 
 fn main() {
-    let api: SentechApi = match SentechApi::initialize() {
-        Ok(api) => api,
+    let sentech_api: SentechApi = match SentechApi::initialize() {
+        Ok(sentech_api) => sentech_api,
         Err(err) => {
             eprintln!("Failed to initialize API: {:?}", err);
             return;
         }
     };
 
-    let system: SystemHandle = match api.create_system() {
+    let system: SystemHandle = match sentech_api.create_system() {
         Ok(system) => system,
         Err(err) => {
             eprintln!("Failed to create system: {:?}", err);

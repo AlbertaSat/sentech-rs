@@ -211,6 +211,86 @@ impl SystemHandle {
     }
 }
 
+impl SystemInfoHandle {
+    pub fn get_system_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_id = unsafe { (*(*self.api_table).IStSystemInfo).GetIDA.unwrap() };
+        let err = unsafe { get_sys_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_mode(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_mode = unsafe { (*(*self.api_table).IStSystemInfo).GetModelA.unwrap() };
+        let err = unsafe { get_mode(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_version(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetVersionA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_path_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetPathNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_display_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetDisplayNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+}
+
 impl Drop for SystemHandle {
     fn drop(&mut self) {
         unsafe {
@@ -218,6 +298,12 @@ impl Drop for SystemHandle {
                 release(&mut self.ptr);
             }
         }
+    }
+}
+
+impl Drop for SystemInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for system info in the API
     }
 }
 
@@ -1447,7 +1533,7 @@ impl ImageHandle {
 
 impl ImageBufferHandle {
     pub fn create_image_buffer(&self, allocator: Option<PStApiHandle_t>) -> Result<ImageBufferHandle, _EStApiCError_t> {
-        let mut allocator_handle = allocator.unwrap_or(ptr::null_mut());
+        let allocator_handle = allocator.unwrap_or(ptr::null_mut());
         let mut image_buffer_handle: StApiHandle_t = unsafe { mem::zeroed() };
         let create_image_buffer = unsafe { (*(*self.api_table).IStImageBuffer).CreateIStImageBuffer.unwrap() };
         let err = unsafe { create_image_buffer(allocator_handle, &mut image_buffer_handle) };
