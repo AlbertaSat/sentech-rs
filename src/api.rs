@@ -211,6 +211,86 @@ impl SystemHandle {
     }
 }
 
+impl SystemInfoHandle {
+    pub fn get_system_id(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_id = unsafe { (*(*self.api_table).IStSystemInfo).GetIDA.unwrap() };
+        let err = unsafe { get_sys_id(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_mode(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_mode = unsafe { (*(*self.api_table).IStSystemInfo).GetModelA.unwrap() };
+        let err = unsafe { get_mode(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_version(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetVersionA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_path_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetPathNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_display_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_sys_name = unsafe { (*(*self.api_table).IStSystemInfo).GetDisplayNameA.unwrap() };
+        let err = unsafe { get_sys_name(ptr::addr_of!(self.ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+}
+
 impl Drop for SystemHandle {
     fn drop(&mut self) {
         unsafe {
@@ -218,6 +298,12 @@ impl Drop for SystemHandle {
                 release(&mut self.ptr);
             }
         }
+    }
+}
+
+impl Drop for SystemInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for system info in the API
     }
 }
 
@@ -424,7 +510,7 @@ pub struct PortInfoHandle {
 }
 
 pub struct INodeMapHandle {
-    ptr: StApiHandle_t,
+    nodemap_ptr: StApiHandle_t,
     api_table: *mut GenApi_Functions_t,
 }
 
@@ -454,7 +540,7 @@ impl PortHandle {
             return Err(err);
         }
         Ok(INodeMapHandle {
-            ptr: inode_ptr,
+            nodemap_ptr: inode_ptr,
             api_table: genapi_table,
         })
     }
@@ -1156,7 +1242,7 @@ impl Drop for StreamBufferInfoHandle {
 }
 
 // ===========================================================================
-// Image (IStImage & IStImageBuffer)
+// Image (IStImage, IStImageBuffer, ImageAveragingFilter)
 // ============================================================================
 
 pub struct ImageHandle {
@@ -1167,6 +1253,11 @@ pub struct ImageHandle {
 pub struct ImageBufferHandle {
     ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
+}
+
+pub struct ImageAveragingFilterHandle {
+    image_averaging_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
 }
 
 #[repr(u32)]
@@ -1364,10 +1455,6 @@ pub enum ImagePixelFormat {
     Pol1BayerRGXYC12p = EStPixelFormatNamingConvention_t_StPFNC_Pol1BayerRGXYC12p,
 }
 
-pub enum MemoryInitialization {
-
-}
-
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, FromRepr)]
 pub enum InitializeMemory {
@@ -1444,15 +1531,9 @@ impl ImageHandle {
     }
 }
 
-impl Drop for ImageHandle {
-    fn drop(&mut self) {
-        // No explicit release function for IStImage in the API
-    }
-}
-
 impl ImageBufferHandle {
     pub fn create_image_buffer(&self, allocator: Option<PStApiHandle_t>) -> Result<ImageBufferHandle, _EStApiCError_t> {
-        let mut allocator_handle = allocator.unwrap_or(ptr::null_mut());
+        let allocator_handle = allocator.unwrap_or(ptr::null_mut());
         let mut image_buffer_handle: StApiHandle_t = unsafe { mem::zeroed() };
         let create_image_buffer = unsafe { (*(*self.api_table).IStImageBuffer).CreateIStImageBuffer.unwrap() };
         let err = unsafe { create_image_buffer(allocator_handle, &mut image_buffer_handle) };
@@ -1501,6 +1582,55 @@ impl ImageBufferHandle {
     }
 }
 
+impl ImageAveragingFilterHandle {
+    pub fn get_image_averaging_filter(&self, source_handle: InterfaceHandle) -> Result<ImageAveragingFilterHandle, _EStApiCError_t> {
+        let mut image_averaging_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStImageAveragingFilter).GetIStImageAveragingFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut image_averaging_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ImageAveragingFilterHandle { 
+            image_averaging_ptr: image_averaging_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_averaged_image(&self, image_buffer: ImageBufferHandle, component_bitcount: usize) -> Result<usize, _EStApiCError_t> {
+        let get_averaged_image = unsafe { (*(*self.api_table).IStImageAveragingFilter).GetAveragedImage.unwrap() };
+        let err = unsafe { get_averaged_image(ptr::addr_of!(self.image_averaging_ptr) as *mut _, ptr::addr_of!(image_buffer.ptr) as *mut _, component_bitcount) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(component_bitcount)
+    }
+
+    pub fn clear_image_data(&self) -> Result<(), _EStApiCError_t> {
+        let clear_data = unsafe { (*(*self.api_table).IStImageAveragingFilter).ClearImageData.unwrap() };
+        let err = unsafe { clear_data(ptr::addr_of!(self.image_averaging_ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_frame_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut frame_count: usize = 0;
+        let get_frame_count = unsafe { (*(*self.api_table).IStImageAveragingFilter).GetFrameCount.unwrap() };
+        let err = unsafe { get_frame_count(ptr::addr_of!(self.image_averaging_ptr) as *mut _, &mut frame_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(frame_count)
+    }
+}
+
+impl Drop for ImageHandle {
+    fn drop(&mut self) {
+        // No explicit release function for IStImage in the API
+    }
+}
+
 impl Drop for ImageBufferHandle {
     fn drop(&mut self) {
         unsafe {
@@ -1511,13 +1641,24 @@ impl Drop for ImageBufferHandle {
     }
 }
 
+impl Drop for ImageAveragingFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for IStImageAveragingFilter in the API
+    }
+}
+
 
 // ===========================================================================
 // PixelFormatInfo, PixelComponentValueHandle, PixelComponentInfo, PixelFormatConverter
 // ============================================================================
 
-pub struct PixelFormatInfo {
+pub struct PixelFormatInfoHandle {
     pixel_format_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+pub struct PixelComponentInfoHandle {
+    component_info_ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
 }
 
@@ -1526,9 +1667,267 @@ pub struct PixelComponentValueHandle {
     api_table: *mut StApi_Functions_t,
 }
 
-pub struct PixelComponentInfo {
-    component_info_ptr: StApiHandle_t,
-    api_table: *mut StApi_Functions_t,
+impl PixelFormatInfoHandle {
+    
+    pub fn get_pixel_format_info(&self, pixel_format: ImagePixelFormat) -> Result<PixelFormatInfoHandle, _EStApiCError_t> {
+        let mut pixel_format_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_pixel_format_info = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetIStPixelFormatInfo.unwrap() };
+        let err = unsafe { get_pixel_format_info(pixel_format as u32, &mut pixel_format_info_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(PixelFormatInfoHandle { 
+            pixel_format_ptr: pixel_format_info_ptr, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn get_value(&self) -> Result<u32, _EStApiCError_t> {
+        let mut value: u32 = 0;
+        let get_value = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetValue.unwrap() };
+        let err = unsafe { get_value(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(value)
+    }
+
+    pub fn get_pixel_format_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_pixel_format_name = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetNameA.unwrap() };
+        let err = unsafe { get_pixel_format_name(ptr::addr_of!(self.pixel_format_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_description(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_description = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetDescriptionA.unwrap() };
+        let err = unsafe { get_description(ptr::addr_of!(self.pixel_format_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_pixel_total_bitcount(&self) -> Result<usize, _EStApiCError_t> {
+        let mut bitcount: usize = 0;
+        let get_bitcount = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetEachPixelTotalBitCount.unwrap() };
+        let err = unsafe { get_bitcount(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut bitcount) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(bitcount)
+    }
+
+    pub fn get_component_total_bitcount(&self) -> Result<usize, _EStApiCError_t> {
+        let mut bitcount: usize = 0;
+        let get_bitcount = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetEachComponentTotalBitCount.unwrap() };
+        let err = unsafe { get_bitcount(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut bitcount) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(bitcount)
+    }
+
+    pub fn get_component_valid_bitcount(&self) -> Result<usize, _EStApiCError_t> {
+        let mut bitcount: usize = 0;
+        let get_bitcount = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetEachComponentValidBitCount.unwrap() };
+        let err = unsafe { get_bitcount(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut bitcount) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(bitcount)
+    }
+
+    pub fn get_pixel_component_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut count: usize = 0;
+        let get_count = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetEachPixelTotalComponentCount.unwrap() };
+        let err = unsafe { get_count(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(count)
+    }
+
+    pub fn get_pixel_increment_x(&self) -> Result<usize, _EStApiCError_t> {
+        let mut increment: usize = 0;
+        let get_increment = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetPixelIncrementX.unwrap() };
+        let err = unsafe { get_increment(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut increment) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(increment)
+    }
+
+    pub fn get_pixel_increment_y(&self) -> Result<usize, _EStApiCError_t> {
+        let mut increment: usize = 0;
+        let get_increment = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetPixelIncrementY.unwrap() };
+        let err = unsafe { get_increment(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut increment) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(increment)
+    }
+
+    pub fn is_color(&self) -> Result<u8, _EStApiCError_t> {
+        let mut is_color: u8 = 0;
+        let get_is_color = unsafe { (*(*self.api_table).IStPixelFormatInfo).IsColor.unwrap() };
+        let err = unsafe { get_is_color(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut is_color) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(is_color)
+    }
+
+    pub fn is_mono(&self) -> Result<u8, _EStApiCError_t> {
+        let mut is_mono: u8 = 0;
+        let get_is_mono = unsafe { (*(*self.api_table).IStPixelFormatInfo).IsMono.unwrap() };
+        let err = unsafe { get_is_mono(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut is_mono) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(is_mono)
+    }
+
+    pub fn is_bayer(&self) -> Result<u8, _EStApiCError_t> {
+        let mut is_bayer: u8 = 0;
+        let get_is_bayer = unsafe { (*(*self.api_table).IStPixelFormatInfo).IsBayer.unwrap() };
+        let err = unsafe { get_is_bayer(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut is_bayer) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(is_bayer)
+    }
+
+    pub fn is_compressed(&self) -> Result<u8, _EStApiCError_t> {
+        let mut is_compressed: u8 = 0;
+        let get_is_compressed = unsafe { (*(*self.api_table).IStPixelFormatInfo).IsCompressed.unwrap() };
+        let err = unsafe { get_is_compressed(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut is_compressed) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(is_compressed)
+    }
+
+    pub fn get_pixel_color_filter(&self, x: usize, y: usize) -> Result<u32, _EStApiCError_t> {
+        let mut color_filter: u32 = 0;
+        let get_color_filter = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetPixelColorFilter.unwrap() };
+        let err = unsafe { get_color_filter(ptr::addr_of!(self.pixel_format_ptr) as *mut _, x, y, &mut color_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(color_filter)
+    }
+
+}
+
+impl PixelComponentInfoHandle {
+
+    pub fn get_pixel_component_info(&self, pixel_component: u32) -> Result<PixelComponentInfoHandle, _EStApiCError_t> {
+        let mut component_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_component_info = unsafe { (*(*self.api_table).IStPixelComponentInfo).GetIStPixelComponentInfo.unwrap() };
+        let err = unsafe { get_component_info(pixel_component, &mut component_info_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(PixelComponentInfoHandle { 
+            component_info_ptr: component_info_ptr,
+            api_table: self.api_table 
+        })
+    }
+    
+    pub fn get_value(&self) -> Result<u32, _EStApiCError_t> {
+        let mut value: u32 = 0;
+        let get_value = unsafe { (*(*self.api_table).IStPixelComponentInfo).GetValue.unwrap() };
+        let err = unsafe { get_value(ptr::addr_of!(self.component_info_ptr) as *mut _, &mut value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(value)
+    }
+
+    pub fn get_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_name = unsafe { (*(*self.api_table).IStPixelComponentInfo).GetNameA.unwrap() };
+        let err = unsafe { get_name(ptr::addr_of!(self.component_info_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn get_bitcount(&self) -> Result<usize, _EStApiCError_t> {
+        let mut bitcount: usize = 0;
+        let get_bitcount = unsafe { (*(*self.api_table).IStPixelComponentInfo).GetBitCount.unwrap() };
+        let err = unsafe { get_bitcount(ptr::addr_of!(self.component_info_ptr) as *mut _, &mut bitcount) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(bitcount)
+    }
+}
+
+impl PixelComponentValueHandle {
+
+    pub fn get_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut count: usize = 0;
+        let get_count = unsafe { (*(*self.api_table).IStPixelComponentValue).GetCount.unwrap() };
+        let err = unsafe { get_count(ptr::addr_of!(self.component_val_ptr) as *mut _, &mut count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(count)
+    }
+    
+    pub fn get_value(&self, index: usize) -> Result<i64, _EStApiCError_t> {
+        let mut value: i64 = 0;
+        let get_value = unsafe { (*(*self.api_table).IStPixelComponentValue).GetValue.unwrap() };
+        let err = unsafe { get_value(ptr::addr_of!(self.component_val_ptr) as *mut _, index, &mut value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(value)
+    }
+
+    pub fn get_pixel_component(&self, index: usize) -> Result<u32, _EStApiCError_t> {
+        let mut component_value: u32 = 0;
+        let get_component_index = unsafe { (*(*self.api_table).IStPixelComponentValue).GetPixelComponent.unwrap() };
+        let err = unsafe { get_component_index(ptr::addr_of!(self.component_val_ptr) as *mut _, index, &mut component_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(component_value)
+    }
+}
+
+impl Drop for PixelFormatInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for pixel format info in the API
+    }
+}
+
+impl Drop for PixelComponentInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for pixel component info in the API
+    }
+}
+
+impl Drop for PixelComponentValueHandle {
+    fn drop(&mut self) {
+        // No explicit release function for pixel component value in the API
+    }
 }
 
 // ===========================================================================
@@ -1536,55 +1935,1610 @@ pub struct PixelComponentInfo {
 // ============================================================================
 
 pub struct FeatureBagHandle {
-    ptr: StApiHandle_t,
+    feature_bag_ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
 }
+
+impl FeatureBagHandle {
+    pub fn create_feature_bag(&self) -> Result<FeatureBagHandle, _EStApiCError_t> {
+        let mut feature_bag_handle: StApiHandle_t = unsafe { mem::zeroed() };
+        let create_feature_bag = unsafe { (*(*self.api_table).IStFeatureBag).Create.unwrap() };
+        let err = unsafe { create_feature_bag(&mut feature_bag_handle) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FeatureBagHandle { 
+            feature_bag_ptr: feature_bag_handle, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn store_nodemap(&self, nodemap_handle: &INodeMapHandle, num_entries: i32) -> Result<i64, _EStApiCError_t> {
+        let mut value: i64 = 0;
+        let store_nodemap = unsafe { (*(*self.api_table).IStFeatureBag).StoreNodeMapToBag.unwrap() };
+        let err = unsafe { store_nodemap(ptr::addr_of!(self.feature_bag_ptr) as *mut _, ptr::addr_of!(nodemap_handle.nodemap_ptr) as *mut _, num_entries, &mut value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(value)
+    }
+
+    pub fn store_string(&self, setting: &CStr) -> Result<(), _EStApiCError_t> {;
+        let store_string = unsafe { (*(*self.api_table).IStFeatureBag).StoreStringToBagA.unwrap() };
+        let err = unsafe { store_string(ptr::addr_of!(self.feature_bag_ptr) as *mut _, setting.as_ptr()) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn store_file(&self, file_name: &CStr) -> Result<(), _EStApiCError_t> {
+        let store_file = unsafe { (*(*self.api_table).IStFeatureBag).StoreFileToBagA.unwrap() };
+        let err = unsafe { store_file(ptr::addr_of!(self.feature_bag_ptr) as *mut _, file_name.as_ptr()) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn load_features(&self, nodemap_handle: &INodeMapHandle, verify: u8) -> Result<u8, _EStApiCError_t> {
+        let mut load_error: u8 = 0;
+        let load_features = unsafe { (*(*self.api_table).IStFeatureBag).Load.unwrap() };
+        let err = unsafe { load_features(ptr::addr_of!(self.feature_bag_ptr) as *mut _, ptr::addr_of!(nodemap_handle.nodemap_ptr) as *mut _, verify, &mut load_error) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(load_error)
+    }
+
+    pub fn save_string(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let save_string = unsafe { (*(*self.api_table).IStFeatureBag).SaveToStringA.unwrap() };
+        let err = unsafe { save_string(ptr::addr_of!(self.feature_bag_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+     pub fn save_file(&self, file_name: &CStr) -> Result<(), _EStApiCError_t> {
+        let save_file = unsafe { (*(*self.api_table).IStFeatureBag).SaveToFileA.unwrap() };
+        let err = unsafe { save_file(ptr::addr_of!(self.feature_bag_ptr) as *mut _, file_name.as_ptr()) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for FeatureBagHandle {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(release) = (*(*self.api_table).IStFeatureBag).Release {
+                release(&mut self.feature_bag_ptr);
+            }
+        }
+    }
+}
+
+// ===========================================================================
+// IStAllocator if needed
+// ============================================================================
+
+// ===========================================================================
+// ISt Callback if needed
+// ============================================================================
 
 // ===========================================================================
 // Filter, FilterArray, FilterInfo
 // ============================================================================
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum FilterType {
+    GammaCorrection = EStFilterType_t_StFilterType_GammaCorrection,
+    ColorTransformation = EStFilterType_t_StFilterType_ColorTransformation,
+    EdgeEnhancement = EStFilterType_t_StFilterType_EdgeEnhancement,
+    BalanceRatio = EStFilterType_t_StFilterType_BalanceRatio,
+    NoiseReduction = EStFilterType_t_StFilterType_NoiseReduction,
+    FlatFieldCorrection = EStFilterType_t_StFilterType_FlatFieldCorrection,
+    ChromaSuppression = EStFilterType_t_StFilterType_ChromaSuppression,
+    SNMeasurement = EStFilterType_t_StFilterType_SNMeasurement,
+    GraphData = EStFilterType_t_StFilterType_GraphData,
+    ImageAveraging = EStFilterType_t_StFilterType_ImageAveraging,
+    DefectivePixelDetection = EStFilterType_t_StFilterType_DefectivePixelDetection,
+    Count = EStFilterType_t_StFilterType_Count
+}
+
+pub struct FilterHandle {
+    filter_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+pub struct FilterArrayHandle {
+    filter_array_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+pub struct FilterInfoHandle {
+    filter_info_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t,
+}
+
+impl FilterHandle {
+    pub fn create_filter(&self, filter_type: u32) -> Result<FilterHandle, _EStApiCError_t> {
+        let mut filter_handle: StApiHandle_t = unsafe { mem::zeroed() };
+        let create_filter = unsafe { (*(*self.api_table).IStFilter).CreateIStFilter.unwrap() };
+        let err = unsafe { create_filter(filter_type, &mut filter_handle) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilterHandle { 
+            filter_ptr: filter_handle, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn get_filter(&self, source_handle: InterfaceHandle) -> Result<FilterHandle, _EStApiCError_t> {
+        let mut filter_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStFilter).GetIStFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut filter_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilterHandle { 
+            filter_ptr: filter_ptr, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn get_filter_info(&self) -> Result<FilterInfoHandle, _EStApiCError_t> {
+        let mut filter_info_handle: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter_info = unsafe { (*(*self.api_table).IStFilter).GetIStFilterInfo.unwrap() };
+        let err = unsafe { get_filter_info(ptr::addr_of!(self.filter_ptr) as *mut _, &mut filter_info_handle) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilterInfoHandle { 
+            filter_info_ptr: filter_info_handle, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn filter(&self) -> Result<ImageHandle, _EStApiCError_t> {
+        let mut output_image_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let filter = unsafe { (*(*self.api_table).IStFilter).Filter.unwrap() };
+        let err = unsafe { filter(ptr::addr_of!(self.filter_ptr) as *mut _, &mut output_image_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ImageHandle { 
+            ptr: output_image_ptr, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn get_nodemap(&self, genapi_table: *mut GenApi_Functions_t) -> Result<INodeMapHandle, _EStApiCError_t> {
+        let mut nodemap_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_nodemap = unsafe { (*(*self.api_table).IStFilter).GetINodeMap.unwrap() };
+        let err = unsafe { get_nodemap(ptr::addr_of!(self.filter_ptr) as *mut _, &mut nodemap_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(INodeMapHandle { 
+            nodemap_ptr: nodemap_ptr, 
+            api_table: genapi_table 
+        })
+    }
+}
+
+impl FilterArrayHandle {
+    pub fn filter(&self, count: usize) -> Result<ImageHandle, _EStApiCError_t> {
+        let mut filter_array_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let filter = unsafe { (*(*self.api_table).IStFilterArray).Filter.unwrap() };
+        let err = unsafe { filter(ptr::addr_of!(self.filter_array_ptr) as *mut _, count, &mut filter_array_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ImageHandle { 
+            ptr: filter_array_ptr, 
+            api_table: self.api_table 
+        })
+    }
+
+}
+
+impl FilterInfoHandle {
+    pub fn get_filter_info(&self, filter_type: u32) -> Result<FilterInfoHandle, _EStApiCError_t> {
+        let mut filter_info_handle: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter_info = unsafe { (*(*self.api_table).IStFilterInfo).GetIStFilterInfo.unwrap() };
+        let err = unsafe { get_filter_info(filter_type, &mut filter_info_handle) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilterInfoHandle { 
+            filter_info_ptr: filter_info_handle, 
+            api_table: self.api_table 
+        })
+    }
+
+    pub fn filter_type(&self) -> Result<u32, _EStApiCError_t> {
+        let mut filter_type: u32 = 0;
+        let get_filter_type = unsafe { (*(*self.api_table).IStFilterInfo).GetFilterType.unwrap() };
+        let err = unsafe { get_filter_type(ptr::addr_of!(self.filter_info_ptr) as *mut _, &mut filter_type) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(filter_type)
+    }
+
+    pub fn get_filter_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_filter_name = unsafe { (*(*self.api_table).IStFilterInfo).GetFilterNameA.unwrap() };
+        let err = unsafe { get_filter_name(ptr::addr_of!(self.filter_info_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn is_supported(&self, pixel_format: u32) -> Result<u8, _EStApiCError_t> {
+        let mut supported: u8 = 0;
+        let get_is_supported = unsafe { (*(*self.api_table).IStFilterInfo).IsSupported.unwrap() };
+        let err = unsafe { get_is_supported(ptr::addr_of!(self.filter_info_ptr) as *mut _, pixel_format, &mut supported) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(supported)
+    }
+}
+
+impl Drop for FilterHandle {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(release) = (*(*self.api_table).IStFilter).Release {
+                release(&mut self.filter_ptr);
+            }
+        }
+    }
+}
+
+impl Drop for FilterArrayHandle {
+    fn drop(&mut self) {
+        // No explicit release function for filter array in the API
+    }
+}
+
+impl Drop for FilterInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for filter info in the API
+    }
+}
+
+
 // ===========================================================================
 // GammaCorrectionFilter
 // ============================================================================
+
+pub struct GammaCorrectionFilterHandle {
+    gamma_correction_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl GammaCorrectionFilterHandle {
+    pub fn get_gamma_correction_filter(&self, source_handle: InterfaceHandle) -> Result<GammaCorrectionFilterHandle, _EStApiCError_t> {
+        let mut gamma_correction_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStGammaCorrectionFilter).GetIStGammaCorrectionFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut gamma_correction_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(GammaCorrectionFilterHandle { 
+            gamma_correction_ptr: gamma_correction_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_gamma_value(&self) -> Result<f64, _EStApiCError_t> {
+        let mut gamma_value: f64 = 0.0;
+        let get_gamma_value = unsafe { (*(*self.api_table).IStGammaCorrectionFilter).GetGammaValue.unwrap() };
+        let err = unsafe { get_gamma_value(ptr::addr_of!(self.gamma_correction_ptr) as *mut _, &mut gamma_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(gamma_value)
+    }
+
+    pub fn set_gamma_value(&self, gamma_value: f64) -> Result<(), _EStApiCError_t> {
+        let set_gamma_value = unsafe { (*(*self.api_table).IStGammaCorrectionFilter).SetGammaValue.unwrap() };
+        let err = unsafe { set_gamma_value(ptr::addr_of!(self.gamma_correction_ptr) as *mut _, gamma_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for GammaCorrectionFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for gamma correction filter in the API
+    }
+}
 
 // ===========================================================================
 // ColorTransformationFilter
 // ============================================================================
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum ColorTransformationvalueSelector {
+    Gain_00 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_00,
+    Gain_01 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_01,
+    Gain_02 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_02,
+    Gain_10 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_10,
+    Gain_11 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_11,
+    Gain_12 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_12,
+    Gain_20 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_20,
+    Gain_21 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_21,
+    Gain_22 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Gain_22,
+    Offset_0 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Offset_0,
+    Offset_1 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Offset_1,
+    Offset_2 = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Offset_2,
+    Count = EStColorTransformationValueSelector_t_StColorTransformationValueSelector_Count
+}
+
+pub struct ColorTransformationFilterHandle {
+    color_transformation_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl ColorTransformationFilterHandle {
+    pub fn get_color_transformation_filter(&self, source_handle: InterfaceHandle) -> Result<ColorTransformationFilterHandle, _EStApiCError_t> {
+        let mut color_transformation_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStColorTransformationFilter).GetIStColorTransformationFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut color_transformation_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ColorTransformationFilterHandle { 
+            color_transformation_ptr: color_transformation_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_color_transformation_enable(&self) -> Result<u8, _EStApiCError_t> {
+        let mut enabled: u8 = 0;
+        let get_enable = unsafe { (*(*self.api_table).IStColorTransformationFilter).GetColorTransformationEnable.unwrap() };
+        let err = unsafe { get_enable(ptr::addr_of!(self.color_transformation_ptr) as *mut _, &mut enabled) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(enabled)
+    }
+
+    pub fn set_color_transformation_enable(&self, enable: u8) -> Result<(), _EStApiCError_t> {
+        let set_enable = unsafe { (*(*self.api_table).IStColorTransformationFilter).SetColorTransformationEnable.unwrap() };
+        let err = unsafe { set_enable(ptr::addr_of!(self.color_transformation_ptr) as *mut _, enable) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_color_transformation_value(&self, setting_type: u32) -> Result<f64, _EStApiCError_t> {
+        let mut color_transformation_value: f64 = 0.0;
+        let get_color_transformation_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).GetColorTransformationValue.unwrap() };
+        let err = unsafe { get_color_transformation_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, setting_type, &mut color_transformation_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(color_transformation_value)
+    }
+
+    pub fn set_color_transformation_value(&self, setting_type: u32, color_transformation_value: f64) -> Result<(), _EStApiCError_t> {
+        let set_color_transformation_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).SetColorTransformationValue.unwrap() };
+        let err = unsafe { set_color_transformation_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, setting_type, color_transformation_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_hue_correction_value(&self) -> Result<f64, _EStApiCError_t> {
+        let mut hue_correction_value: f64 = 0.0;
+        let get_hue_correction_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).GetHueCorrection.unwrap() };
+        let err = unsafe { get_hue_correction_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, &mut hue_correction_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(hue_correction_value)
+    }
+
+    pub fn set_hue_correction_value(&self, hue_correction_value: f64) -> Result<(), _EStApiCError_t> {
+        let set_hue_correction_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).SetHueCorrection.unwrap() };
+        let err = unsafe { set_hue_correction_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, hue_correction_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_saturation_correction_value(&self) -> Result<f64, _EStApiCError_t> {
+        let mut saturation_correction_value: f64 = 0.0;
+        let get_saturation_correction_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).GetSaturationCorrection.unwrap() };
+        let err = unsafe { get_saturation_correction_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, &mut saturation_correction_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(saturation_correction_value)
+    }
+
+    pub fn set_saturation_correction_value(&self, saturation_correction_value: f64) -> Result<(), _EStApiCError_t> {
+        let set_saturation_correction_value = unsafe { (*(*self.api_table).IStColorTransformationFilter).SetSaturationCorrection.unwrap() };
+        let err = unsafe { set_saturation_correction_value(ptr::addr_of!(self.color_transformation_ptr) as *mut _, saturation_correction_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for ColorTransformationFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for color transformation filter in the API
+    }
+}
+
 // ===========================================================================
 // EdgeEnhancementFilter
 // ============================================================================
 
+pub struct EdgeEnhancementFilterHandle {
+    edge_enhancement_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl EdgeEnhancementFilterHandle {
+    pub fn get_edge_enhancement_filter(&self, source_handle: InterfaceHandle) -> Result<EdgeEnhancementFilterHandle, _EStApiCError_t> {
+        let mut edge_enhancement_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStEdgeEnhancementFilter).GetIStEdgeEnhancementFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut edge_enhancement_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(EdgeEnhancementFilterHandle { 
+            edge_enhancement_ptr: edge_enhancement_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_strength(&self) -> Result<f64, _EStApiCError_t> {
+        let mut strength: f64 = 0.0;
+        let get_strength = unsafe { (*(*self.api_table).IStEdgeEnhancementFilter).GetStrength.unwrap() };
+        let err = unsafe { get_strength(ptr::addr_of!(self.edge_enhancement_ptr) as *mut _, &mut strength) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(strength)
+    }
+
+    pub fn set_strength(&self, strength: f64) -> Result<(), _EStApiCError_t> {
+        let set_strength = unsafe { (*(*self.api_table).IStEdgeEnhancementFilter).SetStrength.unwrap() };
+        let err = unsafe { set_strength(ptr::addr_of!(self.edge_enhancement_ptr) as *mut _, strength) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_threshold(&self) -> Result<u32, _EStApiCError_t> {
+        let mut threshold: u32 = 0;
+        let get_threshold = unsafe { (*(*self.api_table).IStEdgeEnhancementFilter).GetThresh.unwrap() };
+        let err = unsafe { get_threshold(ptr::addr_of!(self.edge_enhancement_ptr) as *mut _, &mut threshold) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(threshold)
+    }
+
+    pub fn set_threshold(&self, threshold: u32) -> Result<(), _EStApiCError_t> {
+        let set_threshold = unsafe { (*(*self.api_table).IStEdgeEnhancementFilter).SetThresh.unwrap() };
+        let err = unsafe { set_threshold(ptr::addr_of!(self.edge_enhancement_ptr) as *mut _, threshold) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for EdgeEnhancementFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for edge enhancement filter in the API
+    }
+}
 // ===========================================================================
 // BalanceRatioFilter
 // ============================================================================
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum BalanceSelector {
+    Red = EStBalanceRatioSelector_t_StBalanceRatioSelector_Red,
+    Green = EStBalanceRatioSelector_t_StBalanceRatioSelector_Green,
+    Blue = EStBalanceRatioSelector_t_StBalanceRatioSelector_Blue,
+    Y = EStBalanceRatioSelector_t_StBalanceRatioSelector_Y,
+    Cb = EStBalanceRatioSelector_t_StBalanceRatioSelector_Cb,
+    Cr = EStBalanceRatioSelector_t_StBalanceRatioSelector_Cr,
+    Count = EStBalanceRatioSelector_t_StBalanceRatioSelector_Count
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum BalanceWhiteAuto {
+    Off = EStBalanceWhiteAuto_t_StBalanceWhiteAuto_Off,
+    Once = EStBalanceWhiteAuto_t_StBalanceWhiteAuto_Once,
+    Continuous = EStBalanceWhiteAuto_t_StBalanceWhiteAuto_Continuous,
+    Count = EStBalanceWhiteAuto_t_StBalanceWhiteAuto_Count
+}
+
+pub struct BalanceRatioFilterHandle {
+    balance_ratio_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl BalanceRatioFilterHandle {
+    pub fn get_balance_ratio_filter(&self, source_handle: InterfaceHandle) -> Result<BalanceRatioFilterHandle, _EStApiCError_t> {
+        let mut balance_ratio_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStBalanceRatioFilter).GetIStBalanceRatioFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut balance_ratio_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(BalanceRatioFilterHandle { 
+            balance_ratio_ptr: balance_ratio_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_balance_ratio(&self, balance_selector: u32) -> Result<f64, _EStApiCError_t> {
+        let mut balance_ratio: f64 = 0.0;
+        let get_balance_ratio = unsafe { (*(*self.api_table).IStBalanceRatioFilter).GetBalanceRatio.unwrap() };
+        let err = unsafe { get_balance_ratio(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, &mut balance_ratio) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(balance_ratio)
+    }
+
+    pub fn set_balance_ratio(&self, balance_selector: u32, balance_ratio: f64) -> Result<(), _EStApiCError_t> {
+        let set_balance_ratio = unsafe { (*(*self.api_table).IStBalanceRatioFilter).SetBalanceRatio.unwrap() };
+        let err = unsafe { set_balance_ratio(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, balance_ratio) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_offset_before_gain(&self, balance_selector: u32) -> Result<i32, _EStApiCError_t> {
+        let mut offset_before_gain: i32 = 0;
+        let get_offset_before_gain = unsafe { (*(*self.api_table).IStBalanceRatioFilter).GetOffsetLevelBeforeGain.unwrap() };
+        let err = unsafe { get_offset_before_gain(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, &mut offset_before_gain) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(offset_before_gain)
+    }
+
+    pub fn set_offset_before_gain(&self, balance_selector: u32, offset_before_gain: i32) -> Result<(), _EStApiCError_t> {
+        let set_offset_before_gain = unsafe { (*(*self.api_table).IStBalanceRatioFilter).SetOffsetLevelBeforeGain.unwrap() };
+        let err = unsafe { set_offset_before_gain(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, offset_before_gain) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_offset_after_gain(&self, balance_selector: u32) -> Result<i32, _EStApiCError_t> {
+        let mut offset_after_gain: i32 = 0;
+        let get_offset_after_gain = unsafe { (*(*self.api_table).IStBalanceRatioFilter).GetOffsetLevelAfterGain.unwrap() };
+        let err = unsafe { get_offset_after_gain(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, &mut offset_after_gain) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(offset_after_gain)
+    }
+
+    pub fn set_offset_after_gain(&self, balance_selector: u32, offset_after_gain: i32) -> Result<(), _EStApiCError_t> {
+        let set_offset_after_gain = unsafe { (*(*self.api_table).IStBalanceRatioFilter).SetOffsetLevelAfterGain.unwrap() };
+        let err = unsafe { set_offset_after_gain(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, balance_selector, offset_after_gain) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_balance_white_auto(&self) -> Result<u32, _EStApiCError_t> {
+        let mut white_auto: u32 = 0;
+        let get_white_auto = unsafe { (*(*self.api_table).IStBalanceRatioFilter).GetBalanceWhiteAuto.unwrap() };
+        let err = unsafe { get_white_auto(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, &mut white_auto) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(white_auto)
+    }
+
+    pub fn set_balance_white_auto(&self, white_auto: u32) -> Result<(), _EStApiCError_t> {
+        let set_white_auto = unsafe { (*(*self.api_table).IStBalanceRatioFilter).SetBalanceWhiteAuto.unwrap() };
+        let err = unsafe { set_white_auto(ptr::addr_of!(self.balance_ratio_ptr) as *mut _, white_auto) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for BalanceRatioFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for balance ratio filter in the API
+    }
+}
 
 // ===========================================================================
 // NoiseReductionFilter
 // ============================================================================
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum NoiseReductionMode {
+    Off = EStNoiseReductionMode_t_StNoiseReductionMode_Off,
+    Simple = EStNoiseReductionMode_t_StNoiseReductionMode_Simple,
+    SubtractingLightShieldingImage = EStNoiseReductionMode_t_StNoiseReductionMode_SubtractingLightShieldingImage,
+    Count = EStNoiseReductionMode_t_StNoiseReductionMode_Count
+}
+
+pub struct NoiseReductionFilterHandle {
+    noise_reduction_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl NoiseReductionFilterHandle {
+    pub fn get_noise_reduction_filter(&self, source_handle: InterfaceHandle) -> Result<NoiseReductionFilterHandle, _EStApiCError_t> {
+        let mut noise_reduction_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStNoiseReductionFilter).GetIStNoiseReductionFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut noise_reduction_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(NoiseReductionFilterHandle { 
+            noise_reduction_ptr: noise_reduction_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_noise_reduction_mode(&self) -> Result<u32, _EStApiCError_t> {
+        let mut mode: u32 = 0;
+        let get_mode = unsafe { (*(*self.api_table).IStNoiseReductionFilter).GetNoiseReductionMode.unwrap() };
+        let err = unsafe { get_mode(ptr::addr_of!(self.noise_reduction_ptr) as *mut _, &mut mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(mode)
+    }
+
+    pub fn set_noise_reduction_mode(&self, mode: u32) -> Result<(), _EStApiCError_t> {
+        let set_mode = unsafe { (*(*self.api_table).IStNoiseReductionFilter).SetNoiseReductionMode.unwrap() };
+        let err = unsafe { set_mode(ptr::addr_of!(self.noise_reduction_ptr) as *mut _, mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_calibration_enabled(&self) -> Result<u8, _EStApiCError_t> {
+        let mut calibration_enabled: u8 = 0;
+        let get_calibration = unsafe { (*(*self.api_table).IStNoiseReductionFilter).GetCalibrationEnable.unwrap() };
+        let err = unsafe { get_calibration(ptr::addr_of!(self.noise_reduction_ptr) as *mut _, &mut calibration_enabled) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(calibration_enabled)
+    }
+
+    pub fn set_calibration_enabled(&self, calibration_enabled: u8) -> Result<(), _EStApiCError_t> {
+        let set_calibration = unsafe { (*(*self.api_table).IStNoiseReductionFilter).SetCalibrationEnable.unwrap() };
+        let err = unsafe { set_calibration(ptr::addr_of!(self.noise_reduction_ptr) as *mut _, calibration_enabled) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for NoiseReductionFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for noise reduction filter in the API
+    }
+}
+
+
 // ===========================================================================
 // FlatFieldCorrectionFilter
 // ============================================================================
 
-// ===========================================================================
-// ImageAveragingFilter
-// ============================================================================
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum FlatFieldCorrectionMode {
+    Off = EStFlatFieldCorrectionMode_t_StFlatFieldCorrectionMode_Off,
+    Multiplication = EStFlatFieldCorrectionMode_t_StFlatFieldCorrectionMode_Multiplication,
+    Addition = EStFlatFieldCorrectionMode_t_StFlatFieldCorrectionMode_Addition,
+    Count = EStFlatFieldCorrectionMode_t_StFlatFieldCorrectionMode_Count
+}
+
+pub struct FlatFieldCorrectionFilterHandle {
+    flat_field_correction_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl FlatFieldCorrectionFilterHandle {
+    pub fn get_flatfield_correction_filter(&self, source_handle: InterfaceHandle) -> Result<FlatFieldCorrectionFilterHandle, _EStApiCError_t> {
+        let mut flat_field_correction_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).GetIStFlatFieldCorrectionFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut flat_field_correction_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FlatFieldCorrectionFilterHandle { 
+            flat_field_correction_ptr: flat_field_correction_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_flatfield_correction_mode(&self) -> Result<u32, _EStApiCError_t> {
+        let mut mode: u32 = 0;
+        let get_mode = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).GetFlatFieldCorrectionMode.unwrap() };
+        let err = unsafe { get_mode(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, &mut mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(mode)
+    }
+
+    pub fn set_flatfield_correction_mode(&self, mode: u32) -> Result<(), _EStApiCError_t> {
+        let set_mode = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).SetFlatFieldCorrectionMode.unwrap() };
+        let err = unsafe { set_mode(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_calibration_enable(&self) -> Result<u8, _EStApiCError_t> {
+        let mut calibration_enabled: u8 = 0;
+        let get_calibration = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).GetCalibrationEnable.unwrap() };
+        let err = unsafe { get_calibration(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, &mut calibration_enabled) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(calibration_enabled)
+    }
+
+    pub fn set_calibration_enable(&self, calibration_enabled: u8) -> Result<(), _EStApiCError_t> {
+        let set_calibration = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).SetCalibrationEnable.unwrap() };
+        let err = unsafe { set_calibration(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, calibration_enabled) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_calibration_target_value(&self) -> Result<u32, _EStApiCError_t> {
+        let mut target_value: u32 = 0;
+        let get_target_value = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).GetCalibrationTargetValue.unwrap() };
+        let err = unsafe { get_target_value(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, &mut target_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(target_value)
+    }
+
+    pub fn set_calibration_target_value(&self, target_value: u32) -> Result<(), _EStApiCError_t> {
+        let set_target_value = unsafe { (*(*self.api_table).IStFlatFieldCorrectionFilter).SetCalibrationTargetValue.unwrap() };
+        let err = unsafe { set_target_value(ptr::addr_of!(self.flat_field_correction_ptr) as *mut _, target_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for FlatFieldCorrectionFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for flat field correction filter in the API
+    }
+}
 
 // ===========================================================================
-// DefectivePixelDetectionFilter
+// ChromaSuppressionFilter
 // ============================================================================
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum ChromaSuppressionPartSelector {
+    LowLuminancePart = EStChromaSuppressionPartSelector_t_StChromaSuppressionPartSelector_LowLuminancePart,
+    HighLuminancePart = EStChromaSuppressionPartSelector_t_StChromaSuppressionPartSelector_HighLuminancePart,
+    Count = EStChromaSuppressionPartSelector_t_StChromaSuppressionPartSelector_Count
+}
+
+pub struct ChromaSuppressionFilterHandle {
+    chroma_suppression_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl ChromaSuppressionFilterHandle {
+    pub fn get_chroma_suppression_filter(&self, source_handle: InterfaceHandle) -> Result<ChromaSuppressionFilterHandle, _EStApiCError_t> {
+        let mut chroma_suppression_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStChromaSuppressionFilter).GetIStChromaSuppressionFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut chroma_suppression_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ChromaSuppressionFilterHandle { 
+            chroma_suppression_ptr: chroma_suppression_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_threshold_value(&self, part_selector: u32) -> Result<u32, _EStApiCError_t> {
+        let mut threshold: u32 = 0;
+        let get_threshold = unsafe { (*(*self.api_table).IStChromaSuppressionFilter).GetThresholdValue.unwrap() };
+        let err = unsafe { get_threshold(ptr::addr_of!(self.chroma_suppression_ptr) as *mut _, part_selector, &mut threshold) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(threshold)
+    }
+
+    pub fn set_threshold_value(&self, part_selector: u32, threshold: u32) -> Result<(), _EStApiCError_t> {
+        let set_threshold = unsafe { (*(*self.api_table).IStChromaSuppressionFilter).SetThresholdValue.unwrap() };
+        let err = unsafe { set_threshold(ptr::addr_of!(self.chroma_suppression_ptr) as *mut _, part_selector, threshold) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_suppression_value(&self, part_selector: u32) -> Result<u32, _EStApiCError_t> {
+        let mut suppression_value: u32 = 0;
+        let get_suppression_value = unsafe { (*(*self.api_table).IStChromaSuppressionFilter).GetSuppressionValue.unwrap() };
+        let err = unsafe { get_suppression_value(ptr::addr_of!(self.chroma_suppression_ptr) as *mut _, part_selector, &mut suppression_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(suppression_value)
+    }
+
+    pub fn set_suppression_value(&self, part_selector: u32, suppression_value: u32) -> Result<(), _EStApiCError_t> {
+        let set_suppression_value = unsafe { (*(*self.api_table).IStChromaSuppressionFilter).SetSuppressionValue.unwrap() };
+        let err = unsafe { set_suppression_value(ptr::addr_of!(self.chroma_suppression_ptr) as *mut _, part_selector, suppression_value) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for ChromaSuppressionFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for chroma suppression filter in the API
+    }
+}
 
 // ===========================================================================
 // SNMeasurementFilter & SNMeasurementResult
 // ============================================================================
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum ROIMode {
+    WholeImage = EStROIMode_t_StROIMode_WholeImage,
+    Manual = EStROIMode_t_StROIMode_Manual,
+    CenterOfImage = EStROIMode_t_StROIMode_CenterOfImage,
+    Count = EStROIMode_t_StROIMode_Count
+}
+
+pub struct SNMeasurementFilterHandle {
+    sn_measurement_filter_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct SNMeasurementResultHandle {
+    sn_measurement_result_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl SNMeasurementFilterHandle {
+    pub fn get_sn_measurement_filter(&self, source_handle: InterfaceHandle) -> Result<SNMeasurementFilterHandle, _EStApiCError_t> {
+        let mut sn_measurement_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetIStSNMeasurementFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut sn_measurement_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(SNMeasurementFilterHandle { 
+            sn_measurement_filter_ptr: sn_measurement_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn clear_grabbed_image(&self) -> Result<(), _EStApiCError_t> {
+        let clear_grabbed_image = unsafe { (*(*self.api_table).IStSNMeasurementFilter).ClearGrabbedImage.unwrap() };
+        let err = unsafe { clear_grabbed_image(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_frame_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut frame_count: usize = 0;
+        let get_frame_count = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetFrameCount.unwrap() };
+        let err = unsafe { get_frame_count(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut frame_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(frame_count)
+    }
+
+    pub fn set_frame_count(&self, frame_count: usize) -> Result<(), _EStApiCError_t> {
+        let set_frame_count = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetFrameCount.unwrap() };
+        let err = unsafe { set_frame_count(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, frame_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_roi_mode(&self) -> Result<u32, _EStApiCError_t> {
+        let mut roi_mode: u32 = 0;
+        let get_roi_mode = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetROIMode.unwrap() };
+        let err = unsafe { get_roi_mode(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut roi_mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(roi_mode)
+    }
+
+    pub fn set_roi_mode(&self, roi_mode: u32) -> Result<(), _EStApiCError_t> {
+        let set_roi_mode = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetROIMode.unwrap() };
+        let err = unsafe { set_roi_mode(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, roi_mode) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_offset_x(&self) -> Result<usize, _EStApiCError_t> {
+        let mut offset_x: usize = 0;
+        let get_offset_x = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetOffsetX.unwrap() };
+        let err = unsafe { get_offset_x(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut offset_x) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(offset_x)
+    }
+
+    pub fn set_offset_x(&self, offset_x: usize) -> Result<(), _EStApiCError_t> {
+        let set_offset_x = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetOffsetX.unwrap() };
+        let err = unsafe { set_offset_x(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, offset_x) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_offset_y(&self) -> Result<usize, _EStApiCError_t> {
+        let mut offset_y: usize = 0;
+        let get_offset_y = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetOffsetY.unwrap() };
+        let err = unsafe { get_offset_y(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut offset_y) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(offset_y)
+    }
+
+    pub fn set_offset_y(&self, offset_y: usize) -> Result<(), _EStApiCError_t> {
+        let set_offset_y = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetOffsetY.unwrap() };
+        let err = unsafe { set_offset_y(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, offset_y) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_width(&self) -> Result<usize, _EStApiCError_t> {
+        let mut width: usize = 0;
+        let get_width = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetWidth.unwrap() };
+        let err = unsafe { get_width(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut width) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(width)
+    }
+
+    pub fn set_width(&self, width: usize) -> Result<(), _EStApiCError_t> {
+        let set_width = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetWidth.unwrap() };
+        let err = unsafe { set_width(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, width) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_height(&self) -> Result<usize, _EStApiCError_t> {
+        let mut height: usize = 0;
+        let get_height = unsafe { (*(*self.api_table).IStSNMeasurementFilter).GetHeight.unwrap() };
+        let err = unsafe { get_height(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, &mut height) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(height)
+    }
+
+    pub fn set_height(&self, height: usize) -> Result<(), _EStApiCError_t> {
+        let set_height = unsafe { (*(*self.api_table).IStSNMeasurementFilter).SetHeight.unwrap() };
+        let err = unsafe { set_height(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, height) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn retrieve_snmeasurement_result(&self, timeout: u32) -> Result<SNMeasurementResultHandle, _EStApiCError_t> {
+        let mut measurement_result_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_result = unsafe { (*(*self.api_table).IStSNMeasurementFilter).RetrieveIStSNMeasurementResult.unwrap() };
+        let err = unsafe { get_result(ptr::addr_of!(self.sn_measurement_filter_ptr) as *mut _, timeout, &mut measurement_result_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(SNMeasurementResultHandle {
+            sn_measurement_result_ptr: measurement_result_ptr,
+            api_table: self.api_table
+        })
+    }
+}
+
+impl SNMeasurementResultHandle {
+    pub fn get_component_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut component_count: usize = 0;
+        let get_component_count = unsafe { (*(*self.api_table).IStSNMeasurementResult).GetComponentCount.unwrap() };
+        let err = unsafe { get_component_count(ptr::addr_of!(self.sn_measurement_result_ptr) as *mut _, &mut component_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(component_count)
+    }
+
+    pub fn get_snmeasurement_value(&self, component_index: usize) -> Result<(u32, usize, f64, f64, f64), _EStApiCError_t> {
+        let mut component_type: u32 = 0;
+        let mut pixel_count: usize = 0;
+        let mut average_value: f64 = 0.0;
+        let mut temporal_std_dev: f64 = 0.0;
+        let mut frame_std_dev: f64 = 0.0;
+        let get_value = unsafe { (*(*self.api_table).IStSNMeasurementResult).GetSNMeasurementValue.unwrap() };
+        let err = unsafe { get_value(ptr::addr_of!(self.sn_measurement_result_ptr) as *mut _, component_index, &mut component_type, &mut pixel_count, &mut average_value, &mut temporal_std_dev, &mut frame_std_dev) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok((component_type, pixel_count, average_value, temporal_std_dev, frame_std_dev))
+    }
+}
+
+impl Drop for SNMeasurementFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for SN measurement filter in the API
+    }
+}
+
+impl Drop for SNMeasurementResultHandle {
+    fn drop(&mut self) {
+        // No explicit release function for SN measurement result in the API
+    }
+}
+
 // ===========================================================================
 // Converter, ConverterInfo & ReverseConverter
 // ============================================================================
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum ConverterType { 
+    PixelFormat = EStConverterType_t_StConverterType_PixelFormat,
+    Reverse = EStConverterType_t_StConverterType_Reverse,
+    Count = EStConverterType_t_StConverterType_Count
+}
+
+pub struct ConverterHandle {
+    converter_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct ConverterInfoHandle {
+    converter_info_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct ReverseConverterHandle {
+    reverse_converter_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+// ===========================================================================
+// DefectivePixelDetectionFilter
+// ============================================================================
+
+pub struct DefectivePixelDetectionFilterHandle {
+    defective_pixel_detection_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum DefectivePixelDetectionStatus {
+    NotRun = _EStDefectivePixelDetectionStatus_t_StDefectivePixelDetectionStatus_NotRun,
+    Succeeded = _EStDefectivePixelDetectionStatus_t_StDefectivePixelDetectionStatus_Succeeded,
+    TooManyDefectivePixelDetectedFailed = _EStDefectivePixelDetectionStatus_t_StDefectivePixelDetectionStatus_TooManyDefectivePixelDetectedFailed,
+    Failed = _EStDefectivePixelDetectionStatus_t_StDefectivePixelDetectionStatus_Failed,
+    Count = _EStDefectivePixelDetectionStatus_t_StDefectivePixelDetectionStatus_Count
+} 
+
+impl DefectivePixelDetectionFilterHandle {
+    pub fn get_defective_pixel_detection_filter(&self, source_handle: InterfaceHandle) -> Result<DefectivePixelDetectionFilterHandle, _EStApiCError_t> {
+        let mut defective_pixel_detection_filter: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filter = unsafe { (*(*self.api_table).IStDefectivePixelDetectionFilter).GetIStDefectivePixelDetectionFilter.unwrap() };
+        let err = unsafe { get_filter(ptr::addr_of!(source_handle.ptr) as *mut _, &mut defective_pixel_detection_filter) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(DefectivePixelDetectionFilterHandle { 
+            defective_pixel_detection_ptr: defective_pixel_detection_filter, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_detection_result(&self, buffer_size: usize) -> Result<(u32, usize, Vec<_SStDefectivePixelInformation_t>), _EStApiCError_t> {
+        let mut detection_status: u32 = 0;
+        let mut defective_pixel_count: usize = buffer_size;
+        let mut defective_pixel_list: Vec<_SStDefectivePixelInformation_t> = Vec::with_capacity(buffer_size);
+        let get_detection_result = unsafe { (*(*self.api_table).IStDefectivePixelDetectionFilter).GetDetectionResult.unwrap() };
+        let err = unsafe { get_detection_result(ptr::addr_of!(self.defective_pixel_detection_ptr) as *mut _, &mut detection_status, &mut defective_pixel_count, defective_pixel_list.as_mut_ptr()) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok((detection_status, defective_pixel_count, defective_pixel_list))
+    }
+
+    pub fn clear_detection_result(&self) -> Result<(), _EStApiCError_t> {
+        let clear_detection_result = unsafe { (*(*self.api_table).IStDefectivePixelDetectionFilter).ClearDetectionResult.unwrap() };
+        let err = unsafe { clear_detection_result(ptr::addr_of!(self.defective_pixel_detection_ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl Drop for DefectivePixelDetectionFilterHandle {
+    fn drop(&mut self) {
+        // No explicit release function for defective pixel detection filter in the API
+    }
+}
 
 // ===========================================================================
 // Filer, FilerInfo, StillImageFiler, VideoFiler
 // ============================================================================
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum FilerType {
+    StillImage = EStFilerType_t_StFilerType_StillImage,
+    Video = EStFilerType_t_StFilerType_Video,
+    Count = EStFilerType_t_StFilerType_Count
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum StillImageFileFormat {
+    StApiRaw = EStStillImageFileFormat_t_StStillImageFileFormat_StApiRaw,
+    Bitmap = EStStillImageFileFormat_t_StStillImageFileFormat_Bitmap,
+    JPEG = EStStillImageFileFormat_t_StStillImageFileFormat_JPEG,
+    TIff = EStStillImageFileFormat_t_StStillImageFileFormat_TIFF,
+    PNG = EStStillImageFileFormat_t_StStillImageFileFormat_PNG,
+    Count = EStStillImageFileFormat_t_StStillImageFileFormat_Count
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum VideoFileFormat {
+    AVI1 = EStVideoFileFormat_t_StVideoFileFormat_AVI1,
+    AVI2 = EStVideoFileFormat_t_StVideoFileFormat_AVI2,
+    Count = EStVideoFileFormat_t_StVideoFileFormat_Count
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, FromRepr)]
+pub enum VideoCompressionType {
+    Uncompressed = EStVideoFileCompression_t_StVideoFileCompression_Uncompressed,
+    MotionJPEG = EStVideoFileCompression_t_StVideoFileCompression_MotionJPEG,
+    Count = EStVideoFileCompression_t_StVideoFileCompression_Count
+}
+
+pub struct FilerHandle {
+    filer_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct FilerInfoHandle {
+    filer_info_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct StillImageFilerHandle {
+    still_image_filer_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+pub struct VideoFilerHandle {
+    video_filer_ptr: StApiHandle_t,
+    api_table: *mut StApi_Functions_t
+}
+
+impl FilerHandle { 
+    pub fn create_filer(&self, filer_type: u32) -> Result<FilerHandle, _EStApiCError_t> {
+        let mut filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let create_filer = unsafe { (*(*self.api_table).IStFiler).CreateIStFiler.unwrap() };
+        let err = unsafe { create_filer(filer_type, &mut filer_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilerHandle { 
+            filer_ptr: filer_ptr, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_filer(&self, source_handle: InterfaceHandle) -> Result<FilerHandle, _EStApiCError_t> {
+        let mut filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filer = unsafe { (*(*self.api_table).IStFiler).GetIStFiler.unwrap() };
+        let err = unsafe { get_filer(ptr::addr_of!(source_handle.ptr) as *mut _, &mut filer_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilerHandle { 
+            filer_ptr: filer_ptr, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_filer_info(&self) -> Result<FilerInfoHandle, _EStApiCError_t> {
+        let mut filer_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_filer_info = unsafe { (*(*self.api_table).IStFiler).GetIStFilerInfo.unwrap() };
+        let err = unsafe { get_filer_info(ptr::addr_of!(self.filer_ptr) as *mut _, &mut filer_info_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(FilerInfoHandle { 
+            filer_info_ptr, 
+            api_table: self.api_table
+        })
+    }
+}
+
+impl FilerInfoHandle {
+    pub fn get_filer_type(&self) -> Result<u32, _EStApiCError_t> {
+        let mut filer_type: u32 = 0;
+        let get_filer_type = unsafe { (*(*self.api_table).IStFilerInfo).GetFilerType.unwrap() };
+        let err = unsafe { get_filer_type(ptr::addr_of!(self.filer_info_ptr) as *mut _, &mut filer_type) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(filer_type)
+    }
+
+    pub fn get_filer_name(&self) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let get_filer_name = unsafe { (*(*self.api_table).IStFilerInfo).GetFilerNameA.unwrap() };
+        let err = unsafe { get_filer_name(ptr::addr_of!(self.filer_info_ptr) as *mut _, buffer.as_mut_ptr().cast(), &mut len) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+}
+
+impl StillImageFilerHandle {
+    pub fn get_still_image_filer(&self, source_handle: InterfaceHandle) -> Result<StillImageFilerHandle, _EStApiCError_t> {
+        let mut still_image_filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_still_image_filer = unsafe { (*(*self.api_table).IStStillImageFiler).GetIStStillImageFiler.unwrap() };
+        let err = unsafe { get_still_image_filer(ptr::addr_of!(source_handle.ptr) as *mut _, &mut still_image_filer_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(StillImageFilerHandle { 
+            still_image_filer_ptr, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn is_save_supported(&self, pixel_format: u32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
+        let mut supported: u8 = 0;
+        let is_save_supported = unsafe { (*(*self.api_table).IStStillImageFiler).IsSaveSupported.unwrap() };
+        let err = unsafe { is_save_supported(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, pixel_format, image_file_format, &mut supported) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(supported)
+    }
+
+    pub fn is_load_supported(&self, pixel_format: u32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
+        let mut supported: u8 = 0;
+        let is_load_supported = unsafe { (*(*self.api_table).IStStillImageFiler).IsLoadSupported.unwrap() };
+        let err = unsafe { is_load_supported(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, pixel_format, image_file_format, &mut supported) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(supported)
+    }
+
+    pub fn save_image(&self, image_dat: ImageHandle, image_file_format: u32, file_name: *const i8) -> Result<(), _EStApiCError_t> {
+        let save_image = unsafe { (*(*self.api_table).IStStillImageFiler).SaveA.unwrap() };
+        let err = unsafe { save_image(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, ptr::addr_of!(image_dat.ptr) as *mut _, image_file_format, file_name) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn load_image(&self, image_buffer: ImageBufferHandle, file_name: *const i8) -> Result<(), _EStApiCError_t> {
+        let load_image = unsafe { (*(*self.api_table).IStStillImageFiler).LoadA.unwrap() };
+        let err = unsafe { load_image(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, ptr::addr_of!(image_buffer.ptr) as *mut _, file_name) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_quality(&self) -> Result<u32, _EStApiCError_t> {
+        let mut quality: u32 = 0;
+        let get_quality = unsafe { (*(*self.api_table).IStStillImageFiler).GetQuality.unwrap() };
+        let err = unsafe { get_quality(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, &mut quality) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(quality)
+    }
+
+    pub fn set_quality(&self, quality: u32) -> Result<(), _EStApiCError_t> {
+        let set_quality = unsafe { (*(*self.api_table).IStStillImageFiler).SetQuality.unwrap() };
+        let err = unsafe { set_quality(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, quality) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
+
+impl VideoFilerHandle {
+    pub fn get_video_filer(&self, source_handle: InterfaceHandle) -> Result<VideoFilerHandle, _EStApiCError_t> {
+        let mut video_filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_video_filer = unsafe { (*(*self.api_table).IStVideoFiler).GetIStVideoFiler.unwrap() };
+        let err = unsafe { get_video_filer(ptr::addr_of!(source_handle.ptr) as *mut _, &mut video_filer_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(VideoFilerHandle { 
+            video_filer_ptr, 
+            api_table: self.api_table
+        })
+    }
+
+    pub fn get_video_file_format(&self) -> Result<u32, _EStApiCError_t> {
+        let mut video_file_format: u32 = 0;
+        let get_video_file_format = unsafe { (*(*self.api_table).IStVideoFiler).GetVideoFileFormat.unwrap() };
+        let err = unsafe { get_video_file_format(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut video_file_format) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(video_file_format)
+    }
+
+    pub fn set_video_file_format(&self, video_file_format: u32) -> Result<(), _EStApiCError_t> {
+        let set_video_file_format = unsafe { (*(*self.api_table).IStVideoFiler).SetVideoFileFormat.unwrap() };
+        let err = unsafe { set_video_file_format(ptr::addr_of!(self.video_filer_ptr) as *mut _, video_file_format) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_video_file_compression(&self) -> Result<u32, _EStApiCError_t> {
+        let mut video_file_compression: u32 = 0;
+        let get_video_file_compression = unsafe { (*(*self.api_table).IStVideoFiler).GetVideoFileCompression.unwrap() };
+        let err = unsafe { get_video_file_compression(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut video_file_compression) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(video_file_compression)
+    }
+
+    pub fn set_video_file_compression(&self, video_file_compression: u32) -> Result<(), _EStApiCError_t> {
+        let set_video_file_compression = unsafe { (*(*self.api_table).IStVideoFiler).SetVideoFileCompression.unwrap() };
+        let err = unsafe { set_video_file_compression(ptr::addr_of!(self.video_filer_ptr) as *mut _, video_file_compression) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_quality(&self) -> Result<u32, _EStApiCError_t> {
+        let mut quality: u32 = 0;
+        let get_quality = unsafe { (*(*self.api_table).IStVideoFiler).GetQuality.unwrap() };
+        let err = unsafe { get_quality(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut quality) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(quality)
+    }
+
+    pub fn set_quality(&self, quality: u32) -> Result<(), _EStApiCError_t> {
+        let set_quality = unsafe { (*(*self.api_table).IStVideoFiler).SetQuality.unwrap() };
+        let err = unsafe { set_quality(ptr::addr_of!(self.video_filer_ptr) as *mut _, quality) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_reverse_y(&self) -> Result<u8, _EStApiCError_t> {
+        let mut reverse_y: u8 = 0;
+        let get_reverse_y = unsafe { (*(*self.api_table).IStVideoFiler).GetReverseY.unwrap() };
+        let err = unsafe { get_reverse_y(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut reverse_y) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(reverse_y)
+    }
+
+    pub fn set_reverse_y(&self, reverse_y: u8) -> Result<(), _EStApiCError_t> {
+        let set_reverse_y = unsafe { (*(*self.api_table).IStVideoFiler).SetReverseY.unwrap() };
+        let err = unsafe { set_reverse_y(ptr::addr_of!(self.video_filer_ptr) as *mut _, reverse_y) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn get_fps(&self) -> Result<f64, _EStApiCError_t> {
+        let mut fps: f64 = 0.0;
+        let get_fps = unsafe { (*(*self.api_table).IStVideoFiler).GetFPS.unwrap() };
+        let err = unsafe { get_fps(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut fps) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(fps)
+    }
+
+    pub fn set_fps(&self, fps: f64) -> Result<(), _EStApiCError_t> {
+        let set_fps = unsafe { (*(*self.api_table).IStVideoFiler).SetFPS.unwrap() };
+        let err = unsafe { set_fps(ptr::addr_of!(self.video_filer_ptr) as *mut _, fps) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn register_filename(&self, file_name: *const i8) -> Result<(), _EStApiCError_t> {
+        let register_filename = unsafe { (*(*self.api_table).IStVideoFiler).RegisterFileNameA.unwrap() };
+        let err = unsafe { register_filename(ptr::addr_of!(self.video_filer_ptr) as *mut _, file_name) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn register_image(&self, image_data: ImageHandle, frame_number: u32) -> Result<(), _EStApiCError_t> {
+        let register_image = unsafe { (*(*self.api_table).IStVideoFiler).RegisterIStImage.unwrap() };
+        let err = unsafe { register_image(ptr::addr_of!(self.video_filer_ptr) as *mut _, ptr::addr_of!(image_data.ptr) as *mut _, frame_number) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn is_stopped(&self) -> Result<u8, _EStApiCError_t> {
+        let mut stopped: u8 = 0;
+        let is_stopped = unsafe { (*(*self.api_table).IStVideoFiler).IsStopped.unwrap() };
+        let err = unsafe { is_stopped(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut stopped) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(stopped)
+    }
+
+    pub fn get_max_frame_count(&self) -> Result<usize, _EStApiCError_t> {
+        let mut max_frame_count: usize = 0;
+        let get_max_frame_count = unsafe { (*(*self.api_table).IStVideoFiler).GetMaximumFrameCountPerFile.unwrap() };
+        let err = unsafe { get_max_frame_count(ptr::addr_of!(self.video_filer_ptr) as *mut _, &mut max_frame_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(max_frame_count)
+    }
+
+    pub fn set_max_frame_count(&self, max_frame_count: usize) -> Result<(), _EStApiCError_t> {
+        let set_max_frame_count = unsafe { (*(*self.api_table).IStVideoFiler).SetMaximumFrameCountPerFile.unwrap() };
+        let err = unsafe { set_max_frame_count(ptr::addr_of!(self.video_filer_ptr) as *mut _, max_frame_count) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn reset(&self) -> Result<(), _EStApiCError_t> {
+        let reset = unsafe { (*(*self.api_table).IStVideoFiler).Reset.unwrap() };
+        let err = unsafe { reset(ptr::addr_of!(self.video_filer_ptr) as *mut _) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+}
+
+impl Drop for FilerHandle {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(release) = (*(*self.api_table).IStFiler).Release {
+                release(&mut self.filer_ptr);
+            }
+        }
+    }
+}
+
+impl Drop for FilerInfoHandle {
+    fn drop(&mut self) {
+        // No explicit release function for filer info in the API
+    }
+}
+
+impl Drop for StillImageFilerHandle {
+    fn drop(&mut self) {
+        // No explicit release function for still image filer in the API
+    }
+}
+
+impl Drop for VideoFilerHandle {
+    fn drop(&mut self) {
+        // No explicit release function for video filer in the API
+    }
+}
+
+// ==========================================================================================================================
+// GraphData, GraphDataBuffer, GraphDataBufferResizable, GraphDataBufferList, GraphDataBufferListResizable, GraphDataFilter
+// ==========================================================================================================================
+
+// ======================================================================================
+// Wnd, WndInfo, DeviceSelectionWnd, ImageDisplayWnd, InodeMapDisplayWnd,GraphDisplayWnd
+// ======================================================================================
+
+// ===========================================================================
+// DrawingTool
+// ============================================================================
