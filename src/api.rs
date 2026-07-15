@@ -1016,6 +1016,19 @@ impl StreamBufferHandle {
             api_table: self.api_table,
         })
     }
+
+    pub fn get_image(&self) -> Result<ImageHandle, _EStApiCError_t> {
+        let mut image_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_image = unsafe { (*(*self.api_table).IStStreamBuffer).GetIStImage.unwrap() };
+        let err = unsafe { get_image(ptr::addr_of!(self.ptr) as *mut _, &mut image_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ImageHandle {
+            ptr: image_ptr,
+            api_table: self.api_table,
+        })
+    }
 }
 
 impl Drop for StreamBufferHandle {
