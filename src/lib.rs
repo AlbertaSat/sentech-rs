@@ -2,6 +2,9 @@ pub mod api;
 mod utils;
 mod error;
 
+pub use error::StApiError;
+pub use error::StApiResult;
+
 mod ffi {
     #![allow(non_upper_case_globals)]
     #![allow(non_camel_case_types)]

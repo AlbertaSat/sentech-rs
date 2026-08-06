@@ -1273,7 +1273,7 @@ pub struct ImageAveragingFilterHandle {
     api_table: *mut StApi_Functions_t
 }
 
-#[repr(u32)]
+#[repr(i32)]
 #[derive(Debug, Clone, Copy, FromRepr)]
 pub enum ImagePixelFormat {
     Unknown = EStPixelFormatNamingConvention_t_StPFNC_Unknown,
@@ -1501,7 +1501,7 @@ impl ImageHandle {
     }
 
     pub fn get_image_pixel_format(&self) -> Result<ImagePixelFormat, _EStApiCError_t> {
-        let mut pixel_format: u32 = 0;
+        let mut pixel_format: i32 = 0;
         let get_pixel_format = unsafe { (*(*self.api_table).IStImage).GetImagePixelFormat.unwrap() };
         let err = unsafe { get_pixel_format(ptr::addr_of!(self.ptr) as *mut _, &mut pixel_format) };
         if err != _EStApiCError_t_StApiCError_NoError {
@@ -1561,7 +1561,7 @@ impl ImageBufferHandle {
 
     pub fn create_buffer(&self, width: usize, height: usize, pixel_format: ImagePixelFormat, initialize_memory: InitializeMemory) -> Result<(), _EStApiCError_t> {
         let create_buffer = unsafe { (*(*self.api_table).IStImageBuffer).CreateBuffer.unwrap() };
-        let err = unsafe { create_buffer(ptr::addr_of!(self.ptr) as *mut _, width, height, pixel_format as u32, initialize_memory as u32) };
+        let err = unsafe { create_buffer(ptr::addr_of!(self.ptr) as *mut _, width, height, pixel_format as i32, initialize_memory as u32) };
         if err != _EStApiCError_t_StApiCError_NoError {
             return Err(err);
         }
@@ -1685,7 +1685,7 @@ impl PixelFormatInfoHandle {
     pub fn get_pixel_format_info(&self, pixel_format: ImagePixelFormat) -> Result<PixelFormatInfoHandle, _EStApiCError_t> {
         let mut pixel_format_info_ptr: StApiHandle_t = unsafe { mem::zeroed() };
         let get_pixel_format_info = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetIStPixelFormatInfo.unwrap() };
-        let err = unsafe { get_pixel_format_info(pixel_format as u32, &mut pixel_format_info_ptr) };
+        let err = unsafe { get_pixel_format_info(pixel_format as i32, &mut pixel_format_info_ptr) };
         if err != _EStApiCError_t_StApiCError_NoError {
             return Err(err);
         }
@@ -1695,8 +1695,8 @@ impl PixelFormatInfoHandle {
         })
     }
 
-    pub fn get_value(&self) -> Result<u32, _EStApiCError_t> {
-        let mut value: u32 = 0;
+    pub fn get_value(&self) -> Result<i32, _EStApiCError_t> {
+        let mut value: i32 = 0;
         let get_value = unsafe { (*(*self.api_table).IStPixelFormatInfo).GetValue.unwrap() };
         let err = unsafe { get_value(ptr::addr_of!(self.pixel_format_ptr) as *mut _, &mut value) };
         if err != _EStApiCError_t_StApiCError_NoError {
@@ -2201,7 +2201,7 @@ impl FilterInfoHandle {
         Ok(cstr.to_string_lossy().into_owned())
     }
 
-    pub fn is_supported(&self, pixel_format: u32) -> Result<u8, _EStApiCError_t> {
+    pub fn is_supported(&self, pixel_format: i32) -> Result<u8, _EStApiCError_t> {
         let mut supported: u8 = 0;
         let get_is_supported = unsafe { (*(*self.api_table).IStFilterInfo).IsSupported.unwrap() };
         let err = unsafe { get_is_supported(ptr::addr_of!(self.filter_info_ptr) as *mut _, pixel_format, &mut supported) };
@@ -3291,7 +3291,7 @@ impl StillImageFilerHandle {
         })
     }
 
-    pub fn is_save_supported(&self, pixel_format: u32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
+    pub fn is_save_supported(&self, pixel_format: i32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
         let mut supported: u8 = 0;
         let is_save_supported = unsafe { (*(*self.api_table).IStStillImageFiler).IsSaveSupported.unwrap() };
         let err = unsafe { is_save_supported(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, pixel_format, image_file_format, &mut supported) };
@@ -3301,7 +3301,7 @@ impl StillImageFilerHandle {
         Ok(supported)
     }
 
-    pub fn is_load_supported(&self, pixel_format: u32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
+    pub fn is_load_supported(&self, pixel_format: i32, image_file_format: u32) -> Result<u8, _EStApiCError_t> {
         let mut supported: u8 = 0;
         let is_load_supported = unsafe { (*(*self.api_table).IStStillImageFiler).IsLoadSupported.unwrap() };
         let err = unsafe { is_load_supported(ptr::addr_of!(self.still_image_filer_ptr) as *mut _, pixel_format, image_file_format, &mut supported) };

@@ -33,7 +33,7 @@ changed i32 to u32 to match the type of _EStApiCError_t in the generated binding
 changed Gen to GenTL 
 */
 
-#[repr(u32)]
+#[repr(i32)]
 #[derive(Debug, Copy, Clone, Error, FromRepr)]
 pub enum StApiError{
 
