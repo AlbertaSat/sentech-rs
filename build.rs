@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rustc-link-search=/opt/sentech/lib");
-    println!("cargo:rustc-link-lib=StApi");
+    println!("cargo:rustc-link-lib=StApi_C");
     unsafe {
         std::env::set_var(
             "BINDGEN_EXTRA_CLANG_ARGS",
