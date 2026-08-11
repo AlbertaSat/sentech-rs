@@ -14,6 +14,7 @@ use strum::FromRepr;
 pub struct SentechApi {
     stapi_table: *mut StApi_Functions_t, // Pointer to the API function table
     genapi_table: *mut GenApi_Functions_t, // Pointer to the GenApi function table
+    
 }
 
 pub struct ApiVersion {
@@ -40,6 +41,11 @@ impl SentechApi {
             genapi_table,
         })
     }
+
+    pub fn genapi_table(&self) -> *mut GenApi_Functions_t {
+        self.genapi_table
+    }
+    
 
     // need to create system handle first to access the system-level functions like updating interface list, getting interface count, etc.
     pub fn create_system(&self) -> Result<SystemHandle, _EStApiCError_t> {
@@ -3555,3 +3561,110 @@ impl Drop for VideoFilerHandle {
 // ===========================================================================
 // DrawingTool
 // ============================================================================
+
+// ============================================================================
+// Node / Command / Value Handles (GenApi: INode, ICommand, IValue)
+// ============================================================================
+
+pub struct INodeHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut GenApi_Functions_t,
+}
+
+pub struct CommandHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut GenApi_Functions_t,
+}
+
+pub struct ValueHandle {
+    ptr: StApiHandle_t,
+    api_table: *mut GenApi_Functions_t,
+}
+
+impl INodeMapHandle {
+    pub fn get_node(&self, name: &str) -> Result<INodeHandle, _EStApiCError_t> {
+        let mut node_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let c_name = CString::new(name)
+            .map_err(|_| _EStApiCError_t_StApiCError_InvalidArgument)?; // <- verify this variant name exists
+
+        let get_node = unsafe { (*(*self.api_table).INodeMap).GetNodeA.unwrap() };
+        let err = unsafe {
+            get_node(ptr::addr_of!(self.nodemap_ptr) as *mut _, c_name.as_ptr(), &mut node_ptr)
+        };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(INodeHandle { ptr: node_ptr, api_table: self.api_table })
+    }
+}
+
+impl INodeHandle {
+    pub fn as_command(&self) -> Result<CommandHandle, _EStApiCError_t> {
+        let mut command_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_command = unsafe { (*(*self.api_table).ICommand).GetICommand.unwrap() };
+        let err = unsafe { get_command(ptr::addr_of!(self.ptr) as *mut _, &mut command_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(CommandHandle { ptr: command_ptr, api_table: self.api_table })
+    }
+
+    pub fn as_value(&self) -> Result<ValueHandle, _EStApiCError_t> {
+        let mut value_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_value = unsafe { (*(*self.api_table).IValue).GetIValue.unwrap() };
+        let err = unsafe { get_value(ptr::addr_of!(self.ptr) as *mut _, &mut value_ptr) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(ValueHandle { ptr: value_ptr, api_table: self.api_table })
+    }
+}
+
+impl CommandHandle {
+    pub fn execute(&self, verify: bool8_t) -> Result<(), _EStApiCError_t> {
+        let execute = unsafe { (*(*self.api_table).ICommand).Execute.unwrap() };
+        let err = unsafe { execute(ptr::addr_of!(self.ptr) as *mut _, verify) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+
+    pub fn is_done(&self, verify: bool8_t) -> Result<bool, _EStApiCError_t> {
+        let mut done: bool8_t = 0;
+        let is_done = unsafe { (*(*self.api_table).ICommand).IsDone.unwrap() };
+        let err = unsafe { is_done(ptr::addr_of!(self.ptr) as *mut _, verify, &mut done) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(done != 0)
+    }
+}
+
+impl ValueHandle {
+    pub fn to_string(&self, verify: bool8_t, ignore_cache: bool8_t) -> Result<String, _EStApiCError_t> {
+        let mut len: usize = 256;
+        let mut buffer = vec![0u8; len];
+        let to_string = unsafe { (*(*self.api_table).IValue).ToStringA.unwrap() };
+        let err = unsafe {
+            to_string(ptr::addr_of!(self.ptr) as *mut _, verify, ignore_cache, buffer.as_mut_ptr().cast(), &mut len)
+        };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        buffer.truncate(len);
+        let cstr = CStr::from_bytes_with_nul(&buffer[..len]).unwrap();
+        Ok(cstr.to_string_lossy().into_owned())
+    }
+
+    pub fn from_string(&self, value: &str, verify: bool8_t) -> Result<(), _EStApiCError_t> {
+        let c_value = CString::new(value)
+            .map_err(|_| _EStApiCError_t_StApiCError_InvalidArgument)?; // <- same variant as above
+        let from_string = unsafe { (*(*self.api_table).IValue).FromStringA.unwrap() };
+        let err = unsafe { from_string(ptr::addr_of!(self.ptr) as *mut _, c_value.as_ptr(), verify) };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+        Ok(())
+    }
+}
