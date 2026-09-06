@@ -24,6 +24,35 @@ pub struct ApiVersion {
 }
 
 impl SentechApi {
+    pub fn create_still_image_filer(&self) -> Result<StillImageFilerHandle, _EStApiCError_t> {
+        // Step 1: create a generic Filer of StillImage type.
+        let mut filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let create_filer = unsafe { (*(*self.stapi_table).IStFiler).CreateIStFiler.unwrap() };
+        let err = unsafe {
+            create_filer(EStFilerType_t_StFilerType_StillImage, &mut filer_ptr)
+        };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        // Step 2: query that Filer for its IStStillImageFiler sub-interface.
+        let mut still_image_filer_ptr: StApiHandle_t = unsafe { mem::zeroed() };
+        let get_still_image_filer = unsafe {
+            (*(*self.stapi_table).IStStillImageFiler).GetIStStillImageFiler.unwrap()
+        };
+        let err = unsafe {
+            get_still_image_filer(&mut filer_ptr, &mut still_image_filer_ptr)
+        };
+        if err != _EStApiCError_t_StApiCError_NoError {
+            return Err(err);
+        }
+
+        Ok(StillImageFilerHandle {
+            still_image_filer_ptr,
+            api_table: self.stapi_table,
+        })
+    }
+
     pub fn initialize() -> Result<Self, _EStApiCError_t> {
         let mut raw_api: PApiFunctions = ptr::null_mut();
 
@@ -1264,6 +1293,7 @@ impl Drop for StreamBufferInfoHandle {
 // Image (IStImage, IStImageBuffer, ImageAveragingFilter)
 // ============================================================================
 
+#[derive(Clone)]
 pub struct ImageHandle {
     ptr: StApiHandle_t,
     api_table: *mut StApi_Functions_t,
@@ -3172,7 +3202,7 @@ pub enum FilerType {
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, FromRepr)]
-pub enum StillImageFileFormat {
+pub enum StillImageFileFormat { // aug 20 note: important for saving img
     StApiRaw = EStStillImageFileFormat_t_StStillImageFileFormat_StApiRaw,
     Bitmap = EStStillImageFileFormat_t_StStillImageFileFormat_Bitmap,
     JPEG = EStStillImageFileFormat_t_StStillImageFileFormat_JPEG,
