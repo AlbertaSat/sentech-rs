@@ -1,6 +1,6 @@
 pub mod api;
-mod utils;
 mod error;
+mod utils;
 
 pub use error::StApiError;
 pub use error::StApiResult;

@@ -1,6 +1,6 @@
-use thiserror::Error;
-use strum::FromRepr;
 use crate::ffi::*;
+use strum::FromRepr;
+use thiserror::Error;
 
 pub type StApiResult<T> = Result<T, _EStApiCError_t>;
 
@@ -30,13 +30,12 @@ The relevant error codes were listed in the terminal output:
 
 /*Hasnain Notes
 changed i32 to u32 to match the type of _EStApiCError_t in the generated bindings
-changed Gen to GenTL 
+changed Gen to GenTL
 */
 
 #[repr(i32)]
 #[derive(Debug, Copy, Clone, Error, FromRepr)]
-pub enum StApiError{
-
+pub enum StApiError {
     #[error("Error")]
     Error = _EStApiCError_t_StApiCError_Error,
     #[error("BadAllocation")]
@@ -61,6 +60,4 @@ pub enum StApiError{
     GenTLError = _EStApiCError_t_StApiCError_GenTLError,
     #[error("LinuxError")]
     LinuxError = _EStApiCError_t_StApiCError_LinuxError,
-
 }
-

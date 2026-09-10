@@ -1,7 +1,4 @@
-use sentech_rs::api::{
-    DeviceAccess, InterfaceHandle, SentechApi, SystemHandle,
-};
-
+use sentech_rs::api::{DeviceAccess, InterfaceHandle, SentechApi, SystemHandle};
 
 // ============================================================================
 // Start Sentech Camera
@@ -45,7 +42,8 @@ fn main() {
         return;
     }
 
-    let interface: InterfaceHandle = match system.get_interface(0) { // Zero means get the first interface
+    let interface: InterfaceHandle = match system.get_interface(0) {
+        // Zero means get the first interface
         Ok(interface) => interface,
         Err(e) => {
             eprintln!("Failed to get interface: {:?}", e);
@@ -55,7 +53,8 @@ fn main() {
 
     let access = DeviceAccess::Control;
 
-    let available = match interface.device_available(0, access) { // check if the first device is available
+    let available = match interface.device_available(0, access) {
+        // check if the first device is available
         Ok(available) => available,
         Err(e) => {
             eprintln!("Failed to check device availability: {:?}", e);
@@ -77,5 +76,4 @@ fn main() {
     );
     println!("Device available: {}", available);
     drop(dev);
-
 }
