@@ -1,3 +1,7 @@
+#[allow(unused_imports)]
+#[allow(non_camel_case_types)]
+
+
 use super::{error::*, ffi::*, utils::*};
 use std::{
     ffi::{CStr, CString, c_char, c_void},
