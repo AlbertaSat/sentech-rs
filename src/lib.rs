@@ -1,4 +1,5 @@
 pub mod api;
+pub mod cameleon_api;
 mod error;
 mod utils;
 
