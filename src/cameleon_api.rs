@@ -6,16 +6,16 @@ use cameleon::genapi::GenApiError;
 use cameleon::payload::ImageInfo; //METADATA ; checkout cameleon/src/payload.rs for more info on this struct
 use cameleon::payload::Payload; //ACTUAL IMAGE DATA ; checkout cameleon/src/payload.rs for more info on this struct
 use cameleon::payload::PayloadReceiver;
+use cameleon::payload::PixelFormat;
 
 use cameleon::u3v;
 use cameleon::{Camera, CameleonError, StreamError};
 use thiserror::Error;
 
+use image::{GrayImage, ImageBuffer, RgbImage};
+
 type U3vCamera = Camera<u3v::ControlHandle, u3v::StreamHandle>;
 
-use cameleon::genapi::GenApiError;
-use cameleon::CameleonError;
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CameleonApiError {
@@ -36,6 +36,9 @@ pub enum CameleonApiError {
 
     #[error("Not streaming")]
     NotStreaming,
+
+    #[error("Failed to save image: {0}")]
+    SaveError(String),
 
     #[error("Timed out waiting for frame")]
     Timeout,
@@ -170,7 +173,7 @@ impl CameleonApi {
                 Err(StreamError::ReceiveError(_)) if start.elapsed() < timeout => {
                     std::thread::sleep(Duration::from_millis(1));
                 }
-                Err(StreamError::ReceiveError(_)) => return Err(CameleonApiError::Timeout(timeout)),
+                Err(StreamError::ReceiveError(_)) => return Err(CameleonApiError::Timeout),
                 Err(e) => return Err(CameleonError::from(e).into()),
             }
         };
@@ -178,7 +181,7 @@ impl CameleonApi {
         // Frame::info()/data() unwrap these, so reject payloads without an image here.
         if payload.image().is_none() || payload.image_info().is_none() {
             payload_rx.send_back(payload);
-            return Err(CameleonApiError::NoImageInPayload);
+            return Err(CameleonApiError::NoImage);
         }
 
         println!(
@@ -202,7 +205,30 @@ impl CameleonApi {
     }
 
     pub fn save_image(&self, frame: &Frame, path: &Path, format: &str) -> Result<(), CameleonApiError>{
-        todo!()
+        // image() excludes chunk data that payload() would include
+        let image_data = frame.payload.image().ok_or(CameleonApiError::NoImage)?;
+        let info = frame.payload.image_info().ok_or(CameleonApiError::NoImage)?;
+        let width = u32::try_from(info.width).map_err(|e| CameleonApiError::SaveError(e.to_string()))?;
+        let height = u32::try_from(info.height).map_err(|e| CameleonApiError::SaveError(e.to_string()))?;
+
+        let result = match info.pixel_format {
+            PixelFormat::Mono8 => {
+                let img: GrayImage = ImageBuffer::from_raw(width, height, image_data.to_vec())
+                    .ok_or(CameleonApiError::NoImage)?;
+                img.save(path)
+            }
+            PixelFormat::RGB8 => {
+                let img: RgbImage = ImageBuffer::from_raw(width, height, image_data.to_vec())
+                    .ok_or(CameleonApiError::NoImage)?;
+                img.save(path)
+            }
+            other => {
+                return Err(CameleonApiError::SaveError(format!(
+                    "unsupported pixel format: {other:?}"
+                )))
+            }
+        };
+        result.map_err(|e| CameleonApiError::SaveError(e.to_string()))
     }
 }
 

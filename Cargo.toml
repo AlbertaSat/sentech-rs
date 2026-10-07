@@ -8,6 +8,8 @@ build = "build.rs"
 thiserror = "2.0.17"
 strum = { version = "0.27.2", features = ["derive"] }
 cameleon = { version = "0.1", features = ["libusb"] }
+image = "0.25"
+
 
 [build-dependencies]
 bindgen = "0.72.1"
