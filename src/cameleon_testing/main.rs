@@ -1,5 +1,6 @@
 use cameleon::u3v;
 
+// this is code copy and pasted from the cameleon example!
 // ===================
 // Example code
 
