@@ -46,6 +46,9 @@ pub enum CameleonApiError {
     #[error("Payload contained no image")]
     NoImage,
 
+    #[error("Generic Error")]
+    GenericError,
+
     #[error("CameleonError: {0}")]
     Cameleon(#[from] CameleonError),   // fixes every error mentioning From<CameleonError>
 
@@ -91,6 +94,40 @@ impl CameleonApi {
         println!("Camera initialized successfully.");
 
         Ok(Self { camera , payload_rx: None })
+    }
+
+    pub fn get_feature_type(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
+        let params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        if node.as_integer(&params_ctxt).is_some() {
+            return Ok("Integer".to_string());
+        }
+
+        if node.as_float(&params_ctxt).is_some() {
+            return Ok("Float".to_string());
+        }
+
+        if node.as_boolean(&params_ctxt).is_some() {
+            return Ok("Boolean".to_string());
+        }
+
+        if node.as_enumeration(&params_ctxt).is_some() {
+            return Ok("Enumeration".to_string());
+        }
+
+        if node.as_string(&params_ctxt).is_some() {
+            return Ok("String".to_string());
+        }
+
+        if node.as_command(&params_ctxt).is_some() {
+            return Ok("Command".to_string());
+        }
+
+        Err(CameleonApiError::GenericError)
     }
 
     // // have to define featureinfo enum
