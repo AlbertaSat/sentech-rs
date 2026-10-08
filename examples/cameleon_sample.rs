@@ -39,7 +39,10 @@ fn main() {
         );
         if let Some(image_info) = payload.image_info() {
             println!("{:?}\n", image_info);
-            let image = payload.image();
+            // let image = payload.image();
+            let _ = payload.image();
+
+
             // do something with the image.
             // ...
         }
