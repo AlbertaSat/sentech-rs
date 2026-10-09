@@ -269,3 +269,91 @@ impl CameleonApi {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_feature_type() {
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech Cameleon API");
+
+        let feature_type = api
+            .get_feature_type("Sharpness")
+            .expect("Failed to get feature type");
+
+        println!("Sharpness type: {}", feature_type);
+
+        assert!(
+            feature_type == "Integer"
+        );
+    }
+
+    #[test]
+    fn test_read_feature() {
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech CameleonAPI");
+
+        let value = api
+            .read_int_feature("Sharpness")
+            .expect("Failed to read feature: Sharpness");
+
+        println!("Sharpness: {}", value);
+    }
+
+    #[test]
+    fn test_write_int_feature() {
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech API");
+
+        let feature_name = "Sharpness";
+        let original_value = api
+            .read_int_feature(feature_name)
+            .expect("Failed to read original Width");
+
+        let test_value = original_value - 1;
+
+        api.write_int_feature(feature_name, test_value)
+            .expect("Failed to write Width");
+
+        let new_value = api
+            .read_int_feature(feature_name)
+            .expect("Failed to read Width after writing");
+
+        assert_eq!(
+            new_value, test_value,
+            "Width was not changed to the value we wrote"
+        );
+
+        // Restore the original value.
+        api.write_int_feature(feature_name, original_value)
+            .expect("Failed to restore original Width");
+    }
+
+     #[test]
+    fn test_start_and_stop_streaming() {
+        // Initialize the camera
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech API");
+
+        // Start streaming with a small buffer
+        api.start_streaming(3)
+            .expect("Failed to start streaming");
+
+        // Make sure the receiver was created
+        assert!(
+            api.payload_rx.is_some(),
+            "Payload receiver should exist after starting streaming"
+        );
+
+        // Stop streaming
+        api.stop_streaming()
+            .expect("Failed to stop streaming");
+
+        // Make sure the receiver was cleared
+        assert!(
+            api.payload_rx.is_none(),
+            "Payload receiver should be None after stopping streaming"
+        );
+    }
+}
