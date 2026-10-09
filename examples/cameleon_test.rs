@@ -15,6 +15,17 @@ fn main(){
     let gain_auto = cam_api.read_int_feature("GainAuto").unwrap();
     println!("GainAuto: {}", gain_auto);
 
+    let pixel_format = cam_api.read_string_feature("PixelFormat").unwrap();
+    println!("PixelFormat: {}", pixel_format);
+    let width = cam_api.read_int_feature("Width").unwrap();
+    let height = cam_api.read_int_feature("Height").unwrap();
+    println!("Width: {}, Height: {}", width, height);
+    let firmware_version = cam_api.read_string_feature("DeviceFirmwareVersion").unwrap();
+    println!("DeviceFirmwareVersion: {}", firmware_version);
+    let serial_number = cam_api.read_string_feature("DeviceSerialNumber").unwrap();
+    println!("DeviceSerialNumber: {}", serial_number);
+
+
     cam_api.start_streaming(3).unwrap();
     
     let frame1 = cam_api.recieve_frame(Duration::from_secs(1)).unwrap();

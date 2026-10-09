@@ -157,6 +157,48 @@ impl CameleonApi {
 
     }
 
+    pub fn read_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
+        println!("Reading feature: {}", feature_name);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let string_node = node
+            .as_string(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "String".to_string()))?;
+
+        if !string_node.is_readable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotReadable(feature_name.to_string()));
+        }
+
+        let value = string_node.value(&mut params_ctxt)?;
+        println!("Read feature: {} = {:?}", feature_name, value);
+        Ok(value)
+    }
+
+    pub fn write_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
+        println!("Writing feature: {} = {}", feature_name, value);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let string_node = node
+            .as_string(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "String".to_string()))?;
+
+        if !string_node.is_writable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotWritable(feature_name.to_string()));
+        }
+
+        string_node.set_value(&mut params_ctxt, value.to_string())?;
+        println!("Successfully wrote feature: {} = {}", feature_name, value);
+        Ok(())
+    }
+
     pub fn write_int_feature(&mut self, feature_name: &str, value: i64) -> Result<(), CameleonApiError> {
         println!("Writing integer feature: {} = {}", feature_name, value);
         let mut ctxt = self.camera.params_ctxt()?;
