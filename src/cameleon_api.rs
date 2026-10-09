@@ -361,7 +361,8 @@ mod tests {
         let new_value = api
             .read_int_feature(feature_name)
             .expect("Failed to read Width after writing");
-
+        
+        println!("New value: {}, Old Value: {}", new_value, original_value);
         assert_eq!(
             new_value, test_value,
             "Width was not changed to the value we wrote"
@@ -371,6 +372,49 @@ mod tests {
         api.write_int_feature(feature_name, original_value)
             .expect("Failed to restore original Width");
     }
+
+     #[test]
+    fn test_read_string_feature() {
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech CameleonAPI");
+
+        let value = api
+            .read_string_feature("DeviceDisplayName")
+            .expect("Failed to read feature: DeviceDisplayName");
+
+        println!("Sharpness: {}", value);
+    }
+
+     #[test]
+    fn test_write_string_feature() {
+        let mut api = CameleonApi::initialize()
+            .expect("Failed to initialize Sentech API");
+
+        let feature_name = "DeviceUserID";
+        let original_value = api
+            .read_string_feature(feature_name)
+            .expect("Failed to read original Width");
+
+        let test_value = "test01";
+
+        api.write_string_feature(feature_name, test_value)
+            .expect("Failed to write Width");
+
+        let new_value = api
+            .read_string_feature(feature_name)
+            .expect("Failed to read Width after writing");
+
+        println!("New value: {}, Old Value: {}", new_value, original_value);
+        assert_eq!(
+            new_value, test_value,
+            "Width was not changed to the value we wrote"
+        );
+
+        // Restore the original value.
+        api.write_string_feature(feature_name, original_value.as_str())
+            .expect("Failed to restore original Width");
+    }
+
 
      #[test]
     fn test_start_and_stop_streaming() {
