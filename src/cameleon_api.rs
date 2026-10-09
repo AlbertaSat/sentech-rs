@@ -157,7 +157,7 @@ impl CameleonApi {
 
     }
 
-    pub fn read_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
+    pub fn read_string_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
         println!("Reading feature: {}", feature_name);
         let mut params_ctxt = self.camera.params_ctxt()?;
 
@@ -332,7 +332,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_feature() {
+    fn test_read_int_feature() {
         let mut api = CameleonApi::initialize()
             .expect("Failed to initialize Sentech CameleonAPI");
 
