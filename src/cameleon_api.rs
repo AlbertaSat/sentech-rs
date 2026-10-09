@@ -178,7 +178,7 @@ impl CameleonApi {
         Ok(value)
     }
 
-    pub fn write_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
+    pub fn write_string_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
         println!("Writing feature: {} = {}", feature_name, value);
         let mut params_ctxt = self.camera.params_ctxt()?;
 
