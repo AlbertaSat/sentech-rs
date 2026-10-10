@@ -26,20 +26,20 @@ fn main(){
     println!("DeviceSerialNumber: {}", serial_number);
 
 
-    // cam_api.start_streaming(3).unwrap();
+    cam_api.start_streaming(3).unwrap();
     
-    // let frame1 = cam_api.recieve_frame(Duration::from_secs(1)).unwrap();
-    // let frame2 = cam_api.recieve_frame(Duration::from_secs(1)).unwrap();
-    // println!("Frame 1: id: {}, timestamp: {:?}", frame1.id(), frame1.timestamp());
-    // println!("Frame 2: id: {}, timestamp: {:?}", frame2.id(), frame2.timestamp());
-    // cam_api.stop_streaming().unwrap();  
-    // cam_api.camera.close().unwrap(); // gotta close that camera!
-    // //save path as capture_{SystemTime.now()}.tiff
-    // let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    // let path1 = PathBuf::from(format!("capture1_{}.tiff", ts));
-    // let path2 = PathBuf::from(format!("capture2_{}.tiff", ts));
-    // println!("Saving images to {} and {}", path1.display(), path2.display());
-    // cam_api.save_image(&frame1, &path1, "tiff");    
-    // cam_api.save_image(&frame2, &path2, "tiff");
+    let frame1 = cam_api.recieve_frame(Duration::from_secs(1)).unwrap();
+    let frame2 = cam_api.recieve_frame(Duration::from_secs(1)).unwrap();
+    println!("Frame 1: id: {}, timestamp: {:?}", frame1.id(), frame1.timestamp());
+    println!("Frame 2: id: {}, timestamp: {:?}", frame2.id(), frame2.timestamp());
+    cam_api.stop_streaming().unwrap();  
+    cam_api.camera.close().unwrap(); // gotta close that camera!
+    //save path as capture_{SystemTime.now()}.jpeg
+    let ts = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let path1 = PathBuf::from(format!("vimba_capture1_{}.jpeg", ts));
+    let path2 = PathBuf::from(format!("vimba_capture2_{}.jpeg", ts));
+    println!("Saving images to {} and {}", path1.display(), path2.display());
+    cam_api.save_image(&frame1, &path1, "jpeg");    
+    cam_api.save_image(&frame2, &path2, "jpeg");
     println!("Done!");
 }
