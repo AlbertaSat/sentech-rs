@@ -321,10 +321,10 @@ mod tests {
             .expect("Failed to initialize Sentech Cameleon API");
 
         let feature_type = api
-            .get_feature_type("Sharpness")
+            .get_feature_type("Width")
             .expect("Failed to get feature type");
 
-        println!("Sharpness type: {}", feature_type);
+        println!("Width type: {}", feature_type);
 
         assert!(
             feature_type == "Integer"
@@ -337,10 +337,10 @@ mod tests {
             .expect("Failed to initialize Sentech CameleonAPI");
 
         let value = api
-            .read_int_feature("Sharpness")
-            .expect("Failed to read feature: Sharpness");
+            .read_int_feature("Width")
+            .expect("Failed to read feature: Width");
 
-        println!("Sharpness: {}", value);
+        println!("Width: {}", value);
     }
 
     #[test]
@@ -348,7 +348,7 @@ mod tests {
         let mut api = CameleonApi::initialize()
             .expect("Failed to initialize Sentech API");
 
-        let feature_name = "Sharpness";
+        let feature_name = "Width";
         let original_value = api
             .read_int_feature(feature_name)
             .expect("Failed to read original Width");
@@ -379,10 +379,10 @@ mod tests {
             .expect("Failed to initialize Sentech CameleonAPI");
 
         let value = api
-            .read_string_feature("DeviceDisplayName")
-            .expect("Failed to read feature: DeviceDisplayName");
+            .read_string_feature("DeviceUserID")
+            .expect("Failed to read feature: DeviceUserID");
 
-        println!("Sharpness: {}", value);
+        println!("Width: {}", value);
     }
 
      #[test]
