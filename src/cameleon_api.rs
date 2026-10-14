@@ -148,13 +148,32 @@ impl CameleonApi {
 
         if !int_node.is_readable(&mut params_ctxt)? {
             return Err(CameleonApiError::NotReadable(feature_name.to_string()));
-      
         }
         
         let value = int_node.value(&mut params_ctxt)?;
         println!("Read integer feature: {} = {}", feature_name, value);
         Ok(value)
+    }
 
+    pub fn read_float_feature(&mut self, feature_name: &str) -> Result<f64, CameleonApiError> {
+        println!("Reading float feature: {}", feature_name);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let float_node = node
+            .as_float(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "Float".to_string()))?;
+
+        if !float_node.is_readable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotReadable(feature_name.to_string()));
+        }
+        
+        let value = float_node.value(&mut params_ctxt)?;
+        println!("Read Float feature: {} = {}", feature_name, value);
+        Ok(value)
     }
 
     pub fn read_string_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
@@ -175,6 +194,56 @@ impl CameleonApi {
 
         let value = string_node.value(&mut params_ctxt)?;
         println!("Read feature: {} = {:?}", feature_name, value);
+        Ok(value)
+    }
+
+    pub fn read_enumeration_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
+        println!("Reading bool feature: {}", feature_name);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let enum_node = node
+            .as_enumeration(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "Enum".to_string()))?;
+
+        if !enum_node.is_readable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotReadable(feature_name.to_string()));
+        }
+
+        // get entry node
+        let entry = enum_node.current_entry(&mut params_ctxt)?;
+
+        // read symbolic string from entry
+        let value = entry.symbolic(&mut params_ctxt);
+        println!("Read Enum feature: {} = {:?}", feature_name, value);
+        Ok(value.to_string())
+    }
+
+    pub fn read_enum_entry_feature(&mut self, feature_name: &str) -> Result<f64, CameleonApiError> {
+        todo!()
+    }
+
+    pub fn read_boolean_feature(&mut self, feature_name: &str) -> Result<bool, CameleonApiError> {
+        println!("Reading bool feature: {}", feature_name);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let boolean_node = node
+            .as_boolean(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "Boolean".to_string()))?;
+
+        if !boolean_node.is_readable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotReadable(feature_name.to_string()));
+        }
+
+        let value = boolean_node.value(&mut params_ctxt)?;
+        println!("Read Boolean feature: {} = {:?}", feature_name, value);
         Ok(value)
     }
 
