@@ -247,6 +247,49 @@ impl CameleonApi {
         Ok(value)
     }
 
+    pub fn write_int_feature(&mut self, feature_name: &str, value: i64) -> Result<(), CameleonApiError> {
+        println!("Writing integer feature: {} = {}", feature_name, value);
+        let mut ctxt = self.camera.params_ctxt()?;
+
+        let node = ctxt
+            .node(feature_name)
+            .ok_or_else(|| CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let int_node = node.as_integer(&ctxt).ok_or_else(|| {
+            CameleonApiError::IncorrectType(feature_name.to_string(), "Integer".to_string())
+        })?;
+
+        if !int_node.is_writable(&mut ctxt)? {
+            return Err(CameleonApiError::NotWritable(feature_name.to_string()));
+        }
+
+        int_node.set_value(&mut ctxt, value)?;
+        println!("Successfully wrote integer feature: {} = {}", feature_name, value);
+        Ok(())
+    }
+
+    pub fn write_float_feature(&mut self, feature_name: &str, value: f64) -> Result<(), CameleonApiError> {
+        println!("Writing float feature: {} = {}", feature_name, value);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or( CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        let float_node = node
+            .as_float(&params_ctxt)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "Float".to_string()))?;
+
+        if !float_node.is_writable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotWritable(feature_name.to_string()));
+        }
+
+        float_node.set_value(&mut params_ctxt, value)?;
+        println!("Successfully wrote integer feature: {} = {}", feature_name, value);
+        Ok(())
+    }
+
     pub fn write_string_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
         println!("Writing feature: {} = {}", feature_name, value);
         let mut params_ctxt = self.camera.params_ctxt()?;
@@ -268,26 +311,32 @@ impl CameleonApi {
         Ok(())
     }
 
-    pub fn write_int_feature(&mut self, feature_name: &str, value: i64) -> Result<(), CameleonApiError> {
-        println!("Writing integer feature: {} = {}", feature_name, value);
-        let mut ctxt = self.camera.params_ctxt()?;
+    pub fn write_enumeration_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
+        todo!();
+    }
 
-        let node = ctxt
+    pub fn write_bool_feature(&mut self, feature_name: &str, value: bool) -> Result<(), CameleonApiError> {
+        println!("Writing bool feature: {} = {}", feature_name, value);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
             .node(feature_name)
-            .ok_or_else(|| CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), "Bool".to_string()))?;
 
-        let int_node = node.as_integer(&ctxt).ok_or_else(|| {
-            CameleonApiError::IncorrectType(feature_name.to_string(), "Integer".to_string())
-        })?;
+        let bool_node = node
+            .as_boolean(&params_ctxt)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
 
-        if !int_node.is_writable(&mut ctxt)? {
+        if !bool_node.is_writable(&mut params_ctxt)? {
             return Err(CameleonApiError::NotWritable(feature_name.to_string()));
         }
 
-        int_node.set_value(&mut ctxt, value)?;
-        println!("Successfully wrote integer feature: {} = {}", feature_name, value);
+        bool_node.set_value(&mut params_ctxt, value)?;
+        println!("Successfully wrote feature: {} = {}", feature_name, value);
         Ok(())
     }
+
+
 
     pub fn run_command(&mut self, feature_name: &str) -> Result<(), CameleonApiError> { 
         println!("Running command feature: {}", feature_name);
