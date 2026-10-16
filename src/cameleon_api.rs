@@ -8,7 +8,7 @@ use cameleon::payload::Payload; //ACTUAL IMAGE DATA ; checkout cameleon/src/payl
 use cameleon::payload::PayloadReceiver;
 use cameleon::payload::PixelFormat;
 
-use cameleon::u3v;
+use cameleon::{camera, u3v};
 use cameleon::{Camera, CameleonError, StreamError};
 use thiserror::Error;
 
@@ -46,8 +46,8 @@ pub enum CameleonApiError {
     #[error("Payload contained no image")]
     NoImage,
 
-    #[error("Generic Error")]
-    GenericError,
+    #[error("Generic Error {0}")]
+    GenericError(String),
 
     #[error("CameleonError: {0}")]
     Cameleon(#[from] CameleonError),   // fixes every error mentioning From<CameleonError>
@@ -81,12 +81,30 @@ pub struct CameleonApi {
 }
 
 impl CameleonApi {
-    pub fn initialize() -> Result<Self, CameleonApiError> {
+    /// Initializes Cameleon Api for camera
+    /// 
+    /// selected_camera: parameter that determines which camera to use (1 for VIMBA, 2 for Sentech)
+    ///     - must be supplied otherwise cameleon will not be able to distinguish which camera to use
+    pub fn initialize(selected_camera: u8) -> Result<Self, CameleonApiError> {
         println!("Initializing Cameleon API...");
         println!("Enumerating cameras...");
-        let mut cameras = u3v::enumerate_cameras()?;
+        let cameras = u3v::enumerate_cameras()?;
         println!("Found {} cameras", cameras.len());
-        let mut camera = cameras.pop().ok_or(CameleonApiError::NoCameraFound)?;
+
+        // TODO: find unique identifiers for cameras (see Camera.CameraInfo struct)
+        let camera_model_name = match selected_camera {
+            1 => "Vimba_Unique_identifier",
+            2 => "Sentech_unique_identifier",
+            _ => {
+                return Err(CameleonApiError::GenericError("selected_camera not in valid range (1, 2)".to_string()));
+            }
+        };
+
+        let mut camera = cameras
+            .into_iter()
+            .find(|camera| camera.info().model_name == camera_model_name)
+            .ok_or(CameleonApiError::NoCameraFound)?;
+
         println!("Opening camera...");
         camera.open()?;
         println!("Loading context...");
