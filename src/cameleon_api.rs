@@ -16,6 +16,9 @@ use image::{GrayImage, ImageBuffer, RgbImage};
 
 type U3vCamera = Camera<u3v::ControlHandle, u3v::StreamHandle>;
 
+const VIMBA_UNIQUE_IDENTIFIER: &str = "TODO_VIMBA";
+const SENTECH_UNIQUE_IDENTIFIER: &str = "TODO_SENTECH";
+
 
 #[derive(Error, Debug)]
 pub enum CameleonApiError {
@@ -93,8 +96,8 @@ impl CameleonApi {
 
         // TODO: find unique identifiers for cameras (see Camera.CameraInfo struct)
         let camera_model_name = match selected_camera {
-            1 => "Vimba_Unique_identifier",
-            2 => "Sentech_unique_identifier",
+            1 => VIMBA_UNIQUE_IDENTIFIER,
+            2 => SENTECH_UNIQUE_IDENTIFIER,
             _ => {
                 return Err(CameleonApiError::GenericError("selected_camera not in valid range (1, 2)".to_string()));
             }
@@ -145,13 +148,12 @@ impl CameleonApi {
             return Ok("Command".to_string());
         }
 
-        Err(CameleonApiError::GenericError)
+        Err(CameleonApiError::GenericError(String::from("Could not resolve feature type")))
     }
 
     // // have to define featureinfo enum
     // pub fn get_feature_info(&mut self, feature_name: &str) -> Result<FeatureInfo, CameleonError>;
 
-    // @Olivia read here: https://docs.rs/cameleon/0.1.14/cameleon/genapi/index.html
     pub fn read_int_feature(&mut self, feature_name: &str) -> Result<i64, CameleonApiError> {
         println!("Reading integer feature: {}", feature_name);
         let mut params_ctxt = self.camera.params_ctxt()?;
@@ -330,7 +332,24 @@ impl CameleonApi {
     }
 
     pub fn write_enumeration_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
-        todo!();
+        println!("Writing Enumeration feature: {} = {}", feature_name, value);
+        let mut params_ctxt = self.camera.params_ctxt()?;
+
+        let node = params_ctxt
+            .node(feature_name)
+            .ok_or(CameleonApiError::IncorrectType(feature_name.to_string(), String::from("Enumeration")))?;
+
+        let enum_node = node
+            .as_enumeration(&params_ctxt)
+            .ok_or(CameleonApiError::FeatureNotFound(feature_name.to_string()))?;
+
+        if !enum_node.is_writable(&mut params_ctxt)? {
+            return Err(CameleonApiError::NotWritable(feature_name.to_string()));
+        }
+
+        enum_node.set_entry_by_symbolic(&mut params_ctxt, value)?;
+        println!("Successfully wrote feature {} = {}", feature_name, value);
+        Ok(())
     }
 
     pub fn write_bool_feature(&mut self, feature_name: &str, value: bool) -> Result<(), CameleonApiError> {
