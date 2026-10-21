@@ -298,7 +298,35 @@ impl CameleonApi {
     /// ===============================================================================
 
     pub fn write_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
-        
+        let feature_type = self.get_feature_type(feature_name)?;
+
+        match feature_type.as_str() {
+            "Integer" => {
+                let parsed_val = value.parse::<i64>()
+                    .map_err(|e| CameleonApiError::GenericError(e.to_string()))?;
+                self.write_int_feature(feature_name, parsed_val)
+            },
+            "Float" => {
+                let parsed_val = value.parse::<f64>()
+                    .map_err(|e| CameleonApiError::GenericError(e.to_string()))?;
+                self.write_float_feature(feature_name, parsed_val)
+            },
+            "Boolean" => {
+                let parsed_val = value.parse::<bool>()
+                    .map_err(|e| CameleonApiError::GenericError(e.to_string()))?;
+                self.write_bool_feature(feature_name, parsed_val)
+            },
+            "Enumeration" => {
+                self.write_enumeration_feature(feature_name, value)
+            },
+            "String" => {
+                self.write_string_feature(feature_name, value)
+            },
+            unknown => Err(CameleonApiError::GenericError(format!(
+                "feature '{}' has unreadable type {:?}",
+                feature_name, unknown
+            ))),
+        }
     }
     
     pub fn write_int_feature(&mut self, feature_name: &str, value: i64) -> Result<(), CameleonApiError> {
