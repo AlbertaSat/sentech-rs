@@ -16,7 +16,6 @@ use image::{GrayImage, ImageBuffer, RgbImage};
 
 type U3vCamera = Camera<u3v::ControlHandle, u3v::StreamHandle>;
 
-const VIMBA_UNIQUE_IDENTIFIER: &str = "TODO_VIMBA";
 const SENTECH_UNIQUE_IDENTIFIER: &str = "TODO_SENTECH";
 
 
@@ -88,24 +87,15 @@ impl CameleonApi {
     /// 
     /// selected_camera: parameter that determines which camera to use (1 for VIMBA, 2 for Sentech)
     ///     - must be supplied otherwise cameleon will not be able to distinguish which camera to use
-    pub fn initialize(selected_camera: u8) -> Result<Self, CameleonApiError> {
+    pub fn initialize() -> Result<Self, CameleonApiError> {
         println!("Initializing Cameleon API...");
         println!("Enumerating cameras...");
         let cameras = u3v::enumerate_cameras()?;
         println!("Found {} cameras", cameras.len());
 
-        // TODO: find unique identifiers for cameras (see Camera.CameraInfo struct)
-        let camera_model_name = match selected_camera {
-            1 => VIMBA_UNIQUE_IDENTIFIER,
-            2 => SENTECH_UNIQUE_IDENTIFIER,
-            _ => {
-                return Err(CameleonApiError::GenericError("selected_camera not in valid range (1, 2)".to_string()));
-            }
-        };
-
         let mut camera = cameras
             .into_iter()
-            .find(|camera| camera.info().model_name == camera_model_name)
+            .find(|camera| camera.info().model_name == SENTECH_UNIQUE_IDENTIFIER)
             .ok_or(CameleonApiError::NoCameraFound)?;
 
         println!("Opening camera...");
