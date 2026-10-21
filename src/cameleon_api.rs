@@ -58,6 +58,15 @@ pub enum CameleonApiError {
     GenApi(#[from] GenApiError),       // fixes every error mentioning From<GenApiError>
 }
 
+#[derive(Debug, Clone)]
+pub enum FeatureValue {
+    Integer(i64),
+    Float(f64),
+    String(String),
+    Boolean(bool),
+    Enumeration(String),
+}
+
 pub struct Frame { // need frame struct for image metadata/data instead of it die in buffer
     pub payload: Payload, //this is the actual image data, which is a Vec<u8> in cameleon/src/payload.rs
         // notes on payload; can use payload.image() to get the image data as a slice of u8, and payload.image_info() to get the image metadata as an ImageInfo struct
@@ -143,6 +152,27 @@ impl CameleonApi {
 
     // // have to define featureinfo enum
     // pub fn get_feature_info(&mut self, feature_name: &str) -> Result<FeatureInfo, CameleonError>;
+
+    
+    /// ===============================================================================
+    /// Read feature
+    /// ===============================================================================
+    pub fn read_feature(&mut self, feature_name: &str) -> Result<String, CameleonApiError> {
+        let feature_type = self.get_feature_type(feature_name)?;
+
+        match feature_type.as_str() {
+            "Integer" => self.read_int_feature(feature_name).map(|v| v.to_string()),
+            "Float" => self.read_float_feature(feature_name).map(|v| v.to_string()),
+            "Boolean" => self.read_boolean_feature(feature_name).map(|v| v.to_string()),
+            "Enumeration" => self.read_enumeration_feature(feature_name).map(|v| v.to_string()),
+            "String" => self.read_string_feature(feature_name).map(|v| v.to_string()),
+            unknown => Err(CameleonApiError::GenericError(format!(
+                // this is catchall for Command, Raw, None types
+                "feature '{}' has unreadable type {:?}",
+                feature_name, unknown
+            ))),
+        }
+    }
 
     pub fn read_int_feature(&mut self, feature_name: &str) -> Result<i64, CameleonApiError> {
         println!("Reading integer feature: {}", feature_name);
@@ -257,6 +287,20 @@ impl CameleonApi {
         Ok(value)
     }
 
+
+
+
+
+
+
+    /// ===============================================================================
+    /// Read feature
+    /// ===============================================================================
+
+    pub fn write_feature(&mut self, feature_name: &str, value: &str) -> Result<(), CameleonApiError> {
+        
+    }
+    
     pub fn write_int_feature(&mut self, feature_name: &str, value: i64) -> Result<(), CameleonApiError> {
         println!("Writing integer feature: {} = {}", feature_name, value);
         let mut ctxt = self.camera.params_ctxt()?;

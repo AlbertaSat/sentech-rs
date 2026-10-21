@@ -1,6 +1,9 @@
-use crate::ffi::*;
+use crate::{cameleon_api::CameleonApiError, ffi::*};
 use strum::FromRepr;
 use thiserror::Error;
+
+// cameleonApiError defined in cameleon_api
+pub type CameleonApiResult<T> = Result<T, CameleonApiError>;
 
 pub type StApiResult<T> = Result<T, _EStApiCError_t>;
 
