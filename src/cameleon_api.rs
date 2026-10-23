@@ -12,7 +12,9 @@ use cameleon::{camera, u3v};
 use cameleon::{Camera, CameleonError, StreamError};
 use thiserror::Error;
 
-use image::{GrayImage, ImageBuffer, RgbImage};
+use image::{DynamicImage, ImageFormat, GrayImage, ImageBuffer, RgbImage};
+
+use crate::ffi::_EStApiCError_t_StApiCError_GenTLError;
 
 type U3vCamera = Camera<u3v::ControlHandle, u3v::StreamHandle>;
 
@@ -502,6 +504,9 @@ impl CameleonApi {
 
     pub fn save_image(&self, frame: &Frame, path: &Path, format: &str) -> Result<(), CameleonApiError>{
         // image() excludes chunk data that payload() would include
+        let target_format = ImageFormat::from_extension(format)
+            .ok_or(CameleonApiError::SaveError(format!("Unsupported file format extension: {format}")))?;
+        
         let image_data = frame.payload.image().ok_or(CameleonApiError::NoImage)?;
         let info = frame.payload.image_info().ok_or(CameleonApiError::NoImage)?;
         let width = u32::try_from(info.width).map_err(|e| CameleonApiError::SaveError(e.to_string()))?;
@@ -511,12 +516,14 @@ impl CameleonApi {
             PixelFormat::Mono8 => {
                 let img: GrayImage = ImageBuffer::from_raw(width, height, image_data.to_vec())
                     .ok_or(CameleonApiError::NoImage)?;
-                img.save(path)
+                DynamicImage::ImageLuma8((img))
+                // img.save(path)
             }
             PixelFormat::RGB8 => {
                 let img: RgbImage = ImageBuffer::from_raw(width, height, image_data.to_vec())
                     .ok_or(CameleonApiError::NoImage)?;
-                img.save(path)
+                DynamicImage::ImageRgb8((img))
+                // img.save(path)
             }
             other => {
                 return Err(CameleonApiError::SaveError(format!(
@@ -524,7 +531,9 @@ impl CameleonApi {
                 )))
             }
         };
-        result.map_err(|e| CameleonApiError::SaveError(e.to_string()))
+        // result.map_err(|e| CameleonApiError::SaveError(e.to_string()))
+        result.save_with_format(path, target_format)
+            .map_err(|e| CameleonApiError::SaveError(e.to_string()))
     }
 }
 
