@@ -5,6 +5,7 @@ use sentech_rs::api::{DeviceAccess, InterfaceHandle, SentechApi, SystemHandle};
 // ============================================================================
 
 fn main() {
+    println!("Starting Sentech API test...");
     let sentech_api: SentechApi = match SentechApi::initialize() {
         Ok(sentech_api) => sentech_api,
         Err(err) => {
